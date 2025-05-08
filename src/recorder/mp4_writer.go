@@ -67,6 +67,17 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 		return nil
 	}
 
+	// Check for SPS/PPS in the NAL units and update format parameters
+	for _, nalu := range h264Unit.AU {
+		typ := h264.NALUType(nalu[0] & 0x1F)
+		switch typ {
+		case h264.NALUTypeSPS:
+			w.format.SPS = nalu
+		case h264.NALUTypePPS:
+			w.format.PPS = nalu
+		}
+	}
+
 	// Initialize track if needed
 	if w.muxer.CurTrack == nil {
 		init := &fmp4.Init{
@@ -88,9 +99,16 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 	// Check if this is a keyframe
 	isNonSyncSample := !h264.IsRandomAccess(h264Unit.AU)
 
+	// For keyframes, prepend SPS/PPS
+	var nalus [][]byte
+	if !isNonSyncSample {
+		nalus = append(nalus, w.format.SPS, w.format.PPS)
+	}
+	nalus = append(nalus, h264Unit.AU...)
+
 	// Calculate total size of NAL units
 	totalSize := uint32(0)
-	for _, nalu := range h264Unit.AU {
+	for _, nalu := range nalus {
 		totalSize += uint32(len(nalu))
 	}
 
@@ -104,7 +122,7 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 			// Concatenate all NAL units
 			sample := make([]byte, totalSize)
 			offset := 0
-			for _, nalu := range h264Unit.AU {
+			for _, nalu := range nalus {
 				copy(sample[offset:], nalu)
 				offset += len(nalu)
 			}
