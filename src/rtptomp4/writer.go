@@ -8,6 +8,7 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	rtspformat "github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4/seekablebuffer"
 	"github.com/pion/rtp"
@@ -34,6 +35,7 @@ type MP4Writer struct {
 	log        logger.Writer
 	mdat       []byte
 	media      *description.Media
+	encoder    *rtph264.Encoder
 }
 
 // Log implements logger.Writer.
@@ -114,6 +116,19 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 		media:      media,
 	}
 
+	// Initialize H264 encoder if needed
+	if h264Format, ok := format.(*rtspformat.H264); ok {
+		writer.encoder = &rtph264.Encoder{
+			PayloadMaxSize:    1500 - 12, // Standard MTU - RTP header
+			PayloadType:       h264Format.PayloadTyp,
+			PacketizationMode: h264Format.PacketizationMode,
+		}
+		if err := writer.encoder.Init(); err != nil {
+			file.Close()
+			return nil, fmt.Errorf("failed to initialize H264 encoder: %w", err)
+		}
+	}
+
 	// Add a reader to the stream that will write to our file
 	stream.AddReader(writer, media, format, func(u unit.Unit) error {
 		// Convert the unit into an fMP4 sample based on format type
@@ -146,8 +161,12 @@ func (w *MP4Writer) WriteRTP(pkt *rtp.Packet) error {
 	// We need to convert this to a duration and add it to a base NTP time
 	ntp := time.Now().Add(time.Duration(pkt.Timestamp) * time.Second / time.Duration(w.format.ClockRate()))
 
+	// Calculate PTS from RTP timestamp
+	// PTS should be in the same units as the clock rate
+	pts := int64(pkt.Timestamp)
+
 	// Use the stream's WriteRTPPacket functionality with the correct timestamp and media
-	w.stream.WriteRTPPacket(w.media, w.format, pkt, ntp, 0)
+	w.stream.WriteRTPPacket(w.media, w.format, pkt, ntp, pts)
 	return nil
 }
 
