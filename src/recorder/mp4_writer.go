@@ -77,14 +77,34 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 
 	// Initialize track if needed
 	if w.muxer.CurTrack == nil {
+		// Extract SPS and PPS from the first keyframe
+		var sps, pps []byte
+		for _, nalu := range h264Unit.AU {
+			naluType := nalu[0] & 0x1F
+			switch naluType {
+			case 7: // SPS
+				sps = nalu
+			case 8: // PPS
+				pps = nalu
+			}
+		}
+
+		// If we didn't find SPS/PPS in the first packet, use defaults
+		if sps == nil {
+			sps = formatprocessor.H264DefaultSPS
+		}
+		if pps == nil {
+			pps = formatprocessor.H264DefaultPPS
+		}
+
 		init := &fmp4.Init{
 			Tracks: []*fmp4.InitTrack{
 				{
 					ID:        96,
 					TimeScale: 90000,
 					Codec: &fmp4.CodecH264{
-						SPS: w.format.SPS,
-						PPS: w.format.PPS,
+						SPS: sps,
+						PPS: pps,
 					},
 				},
 			},
