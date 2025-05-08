@@ -5,9 +5,9 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/externalcmd"
-	"github.com/bluenviron/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/externalcmd"
+	"github.com/flynnletford/mediamtx/src/stream"
 )
 
 // PathNoStreamAvailableError is returned when no one is publishing.

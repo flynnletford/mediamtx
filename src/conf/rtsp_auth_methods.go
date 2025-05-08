@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/auth"
-	"github.com/bluenviron/mediamtx/src/conf/jsonwrapper"
+	"github.com/flynnletford/mediamtx/src/conf/jsonwrapper"
 )
 
 // RTSPAuthMethods is the rtspAuthMethods parameter.

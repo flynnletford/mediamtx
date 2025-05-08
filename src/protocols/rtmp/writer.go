@@ -8,9 +8,9 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg1audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/amf0"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/h264conf"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/message"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/amf0"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/h264conf"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/message"
 )
 
 func audioRateRTMPToInt(v uint8) int {

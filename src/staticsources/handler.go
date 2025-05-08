@@ -8,17 +8,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/logger"
-	sshls "github.com/bluenviron/mediamtx/src/staticsources/hls"
-	ssrpicamera "github.com/bluenviron/mediamtx/src/staticsources/rpicamera"
-	ssrtmp "github.com/bluenviron/mediamtx/src/staticsources/rtmp"
-	ssrtsp "github.com/bluenviron/mediamtx/src/staticsources/rtsp"
-	sssrt "github.com/bluenviron/mediamtx/src/staticsources/srt"
-	ssudp "github.com/bluenviron/mediamtx/src/staticsources/udp"
-	sswebrtc "github.com/bluenviron/mediamtx/src/staticsources/webrtc"
-	"github.com/bluenviron/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/logger"
+	sshls "github.com/flynnletford/mediamtx/src/staticsources/hls"
+	ssrpicamera "github.com/flynnletford/mediamtx/src/staticsources/rpicamera"
+	ssrtmp "github.com/flynnletford/mediamtx/src/staticsources/rtmp"
+	ssrtsp "github.com/flynnletford/mediamtx/src/staticsources/rtsp"
+	sssrt "github.com/flynnletford/mediamtx/src/staticsources/srt"
+	ssudp "github.com/flynnletford/mediamtx/src/staticsources/udp"
+	sswebrtc "github.com/flynnletford/mediamtx/src/staticsources/webrtc"
+	"github.com/flynnletford/mediamtx/src/stream"
 )
 
 const (

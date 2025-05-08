@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bluenviron/mediamtx/src/conf/env"
-	"github.com/bluenviron/mediamtx/src/conf/jsonwrapper"
+	"github.com/flynnletford/mediamtx/src/conf/env"
+	"github.com/flynnletford/mediamtx/src/conf/jsonwrapper"
 )
 
 var optionalPathValuesType = func() reflect.Type {

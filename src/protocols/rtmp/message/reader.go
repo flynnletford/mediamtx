@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/bytecounter"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/rawmessage"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/bytecounter"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/rawmessage"
 )
 
 func allocateMessage(raw *rawmessage.Message) (Message, error) {

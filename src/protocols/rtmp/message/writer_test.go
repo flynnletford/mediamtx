@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/bytecounter"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/bytecounter"
 )
 
 func TestWriter(t *testing.T) {

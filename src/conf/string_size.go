@@ -2,7 +2,7 @@ package conf
 
 import (
 	"code.cloudfoundry.org/bytefmt"
-	"github.com/bluenviron/mediamtx/src/conf/jsonwrapper"
+	"github.com/flynnletford/mediamtx/src/conf/jsonwrapper"
 )
 
 // StringSize is a size that is unmarshaled from a string.

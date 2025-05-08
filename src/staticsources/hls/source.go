@@ -8,13 +8,13 @@ import (
 	"github.com/bluenviron/gohlslib/v2"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/counterdumper"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/protocols/hls"
-	"github.com/bluenviron/mediamtx/src/protocols/tls"
-	"github.com/bluenviron/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/counterdumper"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/protocols/hls"
+	"github.com/flynnletford/mediamtx/src/protocols/tls"
+	"github.com/flynnletford/mediamtx/src/stream"
 )
 
 // Source is a HLS static source.

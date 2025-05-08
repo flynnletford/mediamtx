@@ -9,9 +9,9 @@ import (
 	srt "github.com/datarhei/gosrt"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/test"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/test"
 )
 
 func TestSource(t *testing.T) {
