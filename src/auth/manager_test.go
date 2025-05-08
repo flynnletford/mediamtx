@@ -13,7 +13,7 @@ import (
 
 	"github.com/MicahParks/jwkset"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
-	"github.com/bluenviron/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 )

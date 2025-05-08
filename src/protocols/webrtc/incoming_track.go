@@ -9,8 +9,8 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 
-	"github.com/bluenviron/mediamtx/src/counterdumper"
-	"github.com/bluenviron/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/counterdumper"
+	"github.com/flynnletford/mediamtx/src/logger"
 )
 
 const (

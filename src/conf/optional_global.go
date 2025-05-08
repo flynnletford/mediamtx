@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bluenviron/mediamtx/src/conf/jsonwrapper"
+	"github.com/flynnletford/mediamtx/src/conf/jsonwrapper"
 )
 
 var optionalGlobalValuesType = func() reflect.Type {

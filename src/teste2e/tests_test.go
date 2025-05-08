@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/core"
-	"github.com/bluenviron/mediamtx/src/test"
+	"github.com/flynnletford/mediamtx/src/core"
+	"github.com/flynnletford/mediamtx/src/test"
 )
 
 func newInstance(conf string) (*core.Core, bool) {

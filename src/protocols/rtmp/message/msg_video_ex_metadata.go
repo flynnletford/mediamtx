@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/amf0"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/rawmessage"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/amf0"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/rawmessage"
 )
 
 // VideoExMetadata is a metadata extended message.

@@ -23,10 +23,10 @@ import (
 	"github.com/pion/rtp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp"
-	"github.com/bluenviron/mediamtx/src/protocols/whip"
-	"github.com/bluenviron/mediamtx/src/test"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp"
+	"github.com/flynnletford/mediamtx/src/protocols/whip"
+	"github.com/flynnletford/mediamtx/src/test"
 )
 
 type testServer struct {

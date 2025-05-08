@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/certloader"
-	"github.com/bluenviron/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/certloader"
+	"github.com/flynnletford/mediamtx/src/logger"
 )
 
 type nilWriter struct{}

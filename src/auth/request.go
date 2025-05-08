@@ -8,7 +8,7 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/headers"
-	"github.com/bluenviron/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/google/uuid"
 )
 

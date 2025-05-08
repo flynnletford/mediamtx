@@ -3,7 +3,7 @@ package message //nolint:dupl
 import (
 	"fmt"
 
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/rawmessage"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/rawmessage"
 )
 
 // UserControlPingResponse is a user control message.

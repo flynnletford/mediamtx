@@ -69,7 +69,7 @@ func do() error {
 			return err
 		}
 
-		res, err := http.Get("https://github.com/bluenviron/mediamtx-rpicamera/releases/download/" + version + "/" + f)
+		res, err := http.Get("https://github.com/flynnletford/mediamtx-rpicamera/releases/download/" + version + "/" + f)
 		if err != nil {
 			return err
 		}

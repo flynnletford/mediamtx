@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/nacl/secretbox"
 
-	"github.com/bluenviron/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/logger"
 )
 
 func createTempFile(byts []byte) (string, error) {

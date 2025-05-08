@@ -10,13 +10,13 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/externalcmd"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp"
-	"github.com/bluenviron/mediamtx/src/stream"
-	"github.com/bluenviron/mediamtx/src/test"
-	"github.com/bluenviron/mediamtx/src/unit"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/externalcmd"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp"
+	"github.com/flynnletford/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/test"
+	"github.com/flynnletford/mediamtx/src/unit"
 	"github.com/stretchr/testify/require"
 )
 

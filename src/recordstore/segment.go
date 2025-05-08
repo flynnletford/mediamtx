@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/conf"
 )
 
 // ErrNoSegmentsFound is returned when no recording segments have been found.

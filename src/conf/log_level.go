@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bluenviron/mediamtx/src/conf/jsonwrapper"
-	"github.com/bluenviron/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/conf/jsonwrapper"
+	"github.com/flynnletford/mediamtx/src/logger"
 )
 
 // LogLevel is the logLevel parameter.

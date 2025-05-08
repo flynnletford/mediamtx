@@ -2,7 +2,7 @@
 package message
 
 import (
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/rawmessage"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/rawmessage"
 )
 
 const (

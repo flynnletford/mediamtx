@@ -1,6 +1,6 @@
 package test
 
-import "github.com/bluenviron/mediamtx/src/logger"
+import "github.com/flynnletford/mediamtx/src/logger"
 
 type nilLogger struct{}
 

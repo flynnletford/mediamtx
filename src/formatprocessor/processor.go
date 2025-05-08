@@ -8,8 +8,8 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/unit"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/unit"
 )
 
 func randUint32() (uint32, error) {

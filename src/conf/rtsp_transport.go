@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/bluenviron/gortsplib/v4"
-	"github.com/bluenviron/mediamtx/src/conf/jsonwrapper"
+	"github.com/flynnletford/mediamtx/src/conf/jsonwrapper"
 )
 
 // RTSPTransport is the rtspTransport parameter.

@@ -19,10 +19,10 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/vp9"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4"
 
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/formatprocessor"
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/unit"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/formatprocessor"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/unit"
 )
 
 func mpeg1audioChannelCount(cm mpeg1audio.ChannelMode) int {

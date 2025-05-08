@@ -3,8 +3,8 @@ package stream
 import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/mediamtx/src/counterdumper"
-	"github.com/bluenviron/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/counterdumper"
+	"github.com/flynnletford/mediamtx/src/logger"
 )
 
 type streamMedia struct {

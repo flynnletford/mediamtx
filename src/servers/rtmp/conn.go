@@ -13,14 +13,14 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/google/uuid"
 
-	"github.com/bluenviron/mediamtx/src/auth"
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/externalcmd"
-	"github.com/bluenviron/mediamtx/src/hooks"
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp"
-	"github.com/bluenviron/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/auth"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/externalcmd"
+	"github.com/flynnletford/mediamtx/src/hooks"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp"
+	"github.com/flynnletford/mediamtx/src/stream"
 )
 
 func pathNameAndQuery(inURL *url.URL) (string, url.Values, string) {

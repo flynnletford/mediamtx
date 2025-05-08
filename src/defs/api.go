@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bluenviron/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/conf"
 )
 
 // APIError is a generic error.

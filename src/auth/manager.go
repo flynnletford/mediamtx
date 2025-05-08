@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
-	"github.com/bluenviron/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )

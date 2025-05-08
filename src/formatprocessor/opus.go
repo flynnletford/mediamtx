@@ -9,8 +9,8 @@ import (
 	mcopus "github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/pion/rtp"
 
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/unit"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/unit"
 )
 
 type opus struct {

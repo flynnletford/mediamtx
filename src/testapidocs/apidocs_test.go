@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/conf/yamlwrapper"
-	"github.com/bluenviron/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/conf/yamlwrapper"
+	"github.com/flynnletford/mediamtx/src/defs"
 	"github.com/stretchr/testify/require"
 )
 

@@ -11,12 +11,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/bluenviron/mediamtx/src/auth"
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/protocols/httpp"
-	"github.com/bluenviron/mediamtx/src/restrictnetwork"
+	"github.com/flynnletford/mediamtx/src/auth"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/protocols/httpp"
+	"github.com/flynnletford/mediamtx/src/restrictnetwork"
 )
 
 //go:generate go run ./hlsjsdownloader

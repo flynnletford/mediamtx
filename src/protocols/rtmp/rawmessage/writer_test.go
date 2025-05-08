@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/bytecounter"
-	"github.com/bluenviron/mediamtx/src/protocols/rtmp/chunk"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/bytecounter"
+	"github.com/flynnletford/mediamtx/src/protocols/rtmp/chunk"
 	"github.com/stretchr/testify/require"
 )
 

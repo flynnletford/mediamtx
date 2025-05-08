@@ -8,12 +8,12 @@ import (
 	mcmpegts "github.com/bluenviron/mediacommon/v2/pkg/formats/mpegts"
 	srt "github.com/datarhei/gosrt"
 
-	"github.com/bluenviron/mediamtx/src/conf"
-	"github.com/bluenviron/mediamtx/src/counterdumper"
-	"github.com/bluenviron/mediamtx/src/defs"
-	"github.com/bluenviron/mediamtx/src/logger"
-	"github.com/bluenviron/mediamtx/src/protocols/mpegts"
-	"github.com/bluenviron/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/counterdumper"
+	"github.com/flynnletford/mediamtx/src/defs"
+	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/protocols/mpegts"
+	"github.com/flynnletford/mediamtx/src/stream"
 )
 
 // Source is a SRT static source.
