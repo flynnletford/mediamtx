@@ -140,7 +140,7 @@ func (s *Server) onGet(ctx *gin.Context) {
 		m = &muxerFMP4{w: ww}
 
 	case "mp4":
-		m = &muxerMP4{w: ww}
+		m = &MuxerMP4{W: ww}
 
 	default:
 		s.writeError(ctx, http.StatusBadRequest, fmt.Errorf("invalid format: %s", format))

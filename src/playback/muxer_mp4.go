@@ -103,3 +103,34 @@ func (w *MuxerMP4) Flush() error {
 
 	return h.Marshal(w.W)
 }
+
+// writeInit implements the muxer interface.
+func (w *MuxerMP4) writeInit(init *fmp4.Init) {
+	w.WriteInit(init)
+}
+
+// setTrack implements the muxer interface.
+func (w *MuxerMP4) setTrack(trackID int) {
+	w.SetTrack(trackID)
+}
+
+// writeSample implements the muxer interface.
+func (w *MuxerMP4) writeSample(
+	dts int64,
+	ptsOffset int32,
+	isNonSyncSample bool,
+	payloadSize uint32,
+	getPayload func() ([]byte, error),
+) error {
+	return w.WriteSample(dts, ptsOffset, isNonSyncSample, payloadSize, getPayload)
+}
+
+// writeFinalDTS implements the muxer interface.
+func (w *MuxerMP4) writeFinalDTS(dts int64) {
+	w.WriteFinalDTS(dts)
+}
+
+// flush implements the muxer interface.
+func (w *MuxerMP4) flush() error {
+	return w.Flush()
+}
