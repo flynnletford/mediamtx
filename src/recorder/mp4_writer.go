@@ -3,7 +3,6 @@ package recorder
 import (
 	"errors"
 	"os"
-	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph265"
@@ -20,6 +19,10 @@ import (
 type MP4Writer struct {
 	file  *os.File
 	muxer *playback.MuxerMP4
+
+	// DTS extractors for codecs that support B-frames
+	h264DTSExtractor *h264.DTSExtractor
+	h265DTSExtractor *h265.DTSExtractor
 }
 
 // NewMP4Writer creates a new MP4Writer.
@@ -36,7 +39,7 @@ func NewMP4Writer(filepath string) (*MP4Writer, error) {
 }
 
 // WriteRTPPacket writes an RTP packet to the MP4 file.
-func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet, ntp time.Time, pts int64) error {
+func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 	// Extract codec information from the RTP packet
 	payloadType := pkt.PayloadType
 	clockRate := getClockRate(payloadType)
@@ -63,6 +66,9 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet, ntp time.Time, pts int64) er
 	var isNonSyncSample bool
 	var ptsOffset int32
 
+	// Use RTP timestamp as PTS
+	pts := int64(pkt.Timestamp)
+
 	switch payloadType {
 	case 96: // H264
 		// For H264, we need to check if this is a keyframe
@@ -85,10 +91,24 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet, ntp time.Time, pts int64) er
 
 		// Check if this is a keyframe
 		isNonSyncSample = !h264.IsRandomAccess(nalus)
-		// For now, use PTS as DTS since we don't have a DTS extractor
-		// TODO: Add proper DTS extraction for H264
-		dts = pts
-		ptsOffset = 0
+
+		// Initialize DTS extractor if not already done
+		if w.h264DTSExtractor == nil {
+			if !h264.IsRandomAccess(nalus) {
+				return nil
+			}
+			w.h264DTSExtractor = &h264.DTSExtractor{}
+			w.h264DTSExtractor.Initialize()
+		}
+
+		// Extract DTS
+		dts, err = w.h264DTSExtractor.Extract(nalus, pts)
+		if err != nil {
+			return err
+		}
+
+		// Calculate PTS offset
+		ptsOffset = int32(pts - dts)
 
 	case 97: // H265
 		// For H265, we need to check if this is a keyframe
@@ -111,10 +131,24 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet, ntp time.Time, pts int64) er
 
 		// Check if this is a keyframe
 		isNonSyncSample = !h265.IsRandomAccess(nalus)
-		// For now, use PTS as DTS since we don't have a DTS extractor
-		// TODO: Add proper DTS extraction for H265
-		dts = pts
-		ptsOffset = 0
+
+		// Initialize DTS extractor if not already done
+		if w.h265DTSExtractor == nil {
+			if !h265.IsRandomAccess(nalus) {
+				return nil
+			}
+			w.h265DTSExtractor = &h265.DTSExtractor{}
+			w.h265DTSExtractor.Initialize()
+		}
+
+		// Extract DTS
+		dts, err = w.h265DTSExtractor.Extract(nalus, pts)
+		if err != nil {
+			return err
+		}
+
+		// Calculate PTS offset
+		ptsOffset = int32(pts - dts)
 
 	default:
 		// For other codecs, use PTS as DTS
