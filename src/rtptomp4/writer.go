@@ -119,7 +119,7 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 	// Initialize H264 encoder if needed
 	if h264Format, ok := format.(*rtspformat.H264); ok {
 		writer.encoder = &rtph264.Encoder{
-			PayloadMaxSize:    1500 - 12, // Standard MTU - RTP header
+			PayloadMaxSize:    1188, // 1200 - 12 (RTP header)
 			PayloadType:       h264Format.PayloadTyp,
 			PacketizationMode: h264Format.PacketizationMode,
 		}
