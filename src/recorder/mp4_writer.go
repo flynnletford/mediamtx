@@ -77,34 +77,14 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 
 	// Initialize track if needed
 	if w.muxer.CurTrack == nil {
-		// Extract SPS and PPS from the first keyframe
-		var sps, pps []byte
-		for _, nalu := range h264Unit.AU {
-			naluType := nalu[0] & 0x1F
-			switch naluType {
-			case 7: // SPS
-				sps = nalu
-			case 8: // PPS
-				pps = nalu
-			}
-		}
-
-		// If we didn't find SPS/PPS in the first packet, use defaults
-		if sps == nil {
-			sps = formatprocessor.H264DefaultSPS
-		}
-		if pps == nil {
-			pps = formatprocessor.H264DefaultPPS
-		}
-
 		init := &fmp4.Init{
 			Tracks: []*fmp4.InitTrack{
 				{
 					ID:        96,
 					TimeScale: 90000,
 					Codec: &fmp4.CodecH264{
-						SPS: sps,
-						PPS: pps,
+						SPS: w.format.SPS,
+						PPS: w.format.PPS,
 					},
 				},
 			},
@@ -119,18 +99,10 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 	// Calculate relative timestamp in milliseconds
 	relativeTs := int64(pkt.Timestamp - *w.firstTimestamp)
 
-	// Prepare NAL units for writing
-	var nalus [][]byte
-	if !isNonSyncSample {
-		// For keyframes, ensure SPS/PPS are included
-		nalus = append(nalus, w.format.SPS, w.format.PPS)
-	}
-	nalus = append(nalus, h264Unit.AU...)
-
-	// Calculate total size including start codes
+	// Calculate total size
 	totalSize := uint32(0)
-	for _, nalu := range nalus {
-		totalSize += uint32(len(nalu)) + 4 // Add 4 bytes for start code
+	for _, nalu := range h264Unit.AU {
+		totalSize += uint32(len(nalu))
 	}
 
 	// Write the sample
@@ -140,18 +112,10 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 		isNonSyncSample,
 		totalSize,
 		func() ([]byte, error) {
-			// Concatenate all NAL units with start codes
+			// Concatenate all NAL units
 			sample := make([]byte, totalSize)
 			offset := 0
-			for _, nalu := range nalus {
-				// Write start code (0x00 0x00 0x00 0x01)
-				sample[offset] = 0
-				sample[offset+1] = 0
-				sample[offset+2] = 0
-				sample[offset+3] = 1
-				offset += 4
-
-				// Write NAL unit
+			for _, nalu := range h264Unit.AU {
 				copy(sample[offset:], nalu)
 				offset += len(nalu)
 			}
