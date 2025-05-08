@@ -22,6 +22,9 @@ type MP4Writer struct {
 	// H264 format processor
 	format *rtspformat.H264
 	proc   formatprocessor.Processor
+
+	// Track timing
+	firstTimestamp *uint32
 }
 
 // NewMP4Writer creates a new MP4Writer.
@@ -67,15 +70,9 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 		return nil
 	}
 
-	// Check for SPS/PPS in the NAL units and update format parameters
-	for _, nalu := range h264Unit.AU {
-		typ := h264.NALUType(nalu[0] & 0x1F)
-		switch typ {
-		case h264.NALUTypeSPS:
-			w.format.SPS = nalu
-		case h264.NALUTypePPS:
-			w.format.PPS = nalu
-		}
+	// Initialize first timestamp
+	if w.firstTimestamp == nil {
+		w.firstTimestamp = &pkt.Timestamp
 	}
 
 	// Initialize track if needed
@@ -99,30 +96,35 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 	// Check if this is a keyframe
 	isNonSyncSample := !h264.IsRandomAccess(h264Unit.AU)
 
-	// For keyframes, prepend SPS/PPS
-	var nalus [][]byte
-	if !isNonSyncSample {
-		nalus = append(nalus, w.format.SPS, w.format.PPS)
-	}
-	nalus = append(nalus, h264Unit.AU...)
+	// Calculate relative timestamp in milliseconds
+	relativeTs := int64(pkt.Timestamp - *w.firstTimestamp)
 
 	// Calculate total size of NAL units
 	totalSize := uint32(0)
-	for _, nalu := range nalus {
+	for _, nalu := range h264Unit.AU {
 		totalSize += uint32(len(nalu))
 	}
 
 	// Write the sample
 	return w.muxer.WriteSample(
-		int64(pkt.Timestamp), // Use RTP timestamp as DTS
-		0,                    // No PTS offset needed since we're using RTP timestamp
+		relativeTs,
+		0, // No PTS offset needed
 		isNonSyncSample,
 		totalSize,
 		func() ([]byte, error) {
+			// Let the format processor handle NAL unit remuxing
+			remuxed := h264Unit.AU
+			if !isNonSyncSample {
+				// For keyframes, ensure SPS/PPS are included
+				remuxed = make([][]byte, 0, len(h264Unit.AU)+2)
+				remuxed = append(remuxed, w.format.SPS, w.format.PPS)
+				remuxed = append(remuxed, h264Unit.AU...)
+			}
+
 			// Concatenate all NAL units
 			sample := make([]byte, totalSize)
 			offset := 0
-			for _, nalu := range nalus {
+			for _, nalu := range remuxed {
 				copy(sample[offset:], nalu)
 				offset += len(nalu)
 			}
