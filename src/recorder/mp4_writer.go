@@ -77,14 +77,23 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 
 	// Initialize track if needed
 	if w.muxer.CurTrack == nil {
+		// Extract SPS and PPS from the format processor
+		sps := w.format.SPS
+		pps := w.format.PPS
+
+		// Verify we have valid SPS/PPS
+		if len(sps) == 0 || len(pps) == 0 {
+			return nil // Wait for valid SPS/PPS
+		}
+
 		init := &fmp4.Init{
 			Tracks: []*fmp4.InitTrack{
 				{
 					ID:        96,
 					TimeScale: 90000,
 					Codec: &fmp4.CodecH264{
-						SPS: w.format.SPS,
-						PPS: w.format.PPS,
+						SPS: sps,
+						PPS: pps,
 					},
 				},
 			},
@@ -102,7 +111,7 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 	// Calculate total size
 	totalSize := uint32(0)
 	for _, nalu := range h264Unit.AU {
-		totalSize += uint32(len(nalu))
+		totalSize += uint32(4 + len(nalu)) // 4 bytes for length prefix
 	}
 
 	// Write the sample
@@ -112,10 +121,19 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 		isNonSyncSample,
 		totalSize,
 		func() ([]byte, error) {
-			// Concatenate all NAL units
+			// Write NAL units in AVCC format (length prefixed)
 			sample := make([]byte, totalSize)
 			offset := 0
 			for _, nalu := range h264Unit.AU {
+				// Write length prefix (4 bytes, big endian)
+				length := uint32(len(nalu))
+				sample[offset] = byte(length >> 24)
+				sample[offset+1] = byte(length >> 16)
+				sample[offset+2] = byte(length >> 8)
+				sample[offset+3] = byte(length)
+				offset += 4
+
+				// Write NAL unit
 				copy(sample[offset:], nalu)
 				offset += len(nalu)
 			}
