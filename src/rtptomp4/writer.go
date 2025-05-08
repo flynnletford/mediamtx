@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	rtspformat "github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4"
@@ -80,9 +81,20 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 		return nil, fmt.Errorf("unsupported format type: %T", format)
 	}
 
+	// Create media description
+	media := &description.Media{
+		Type:    description.MediaTypeVideo,
+		Formats: []rtspformat.Format{format},
+	}
+	desc := &description.Session{
+		Medias: []*description.Media{media},
+	}
+
 	// Create and initialize stream
 	stream := &stream.Stream{
 		WriteQueueSize: 1500,
+		Desc:           desc,
+		Parent:         log,
 	}
 	if err := stream.Initialize(); err != nil {
 		file.Close()
@@ -101,7 +113,7 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 	}
 
 	// Add a reader to the stream that will write to our file
-	stream.AddReader(writer, nil, format, func(u unit.Unit) error {
+	stream.AddReader(writer, media, format, func(u unit.Unit) error {
 		// Convert the unit into an fMP4 sample based on format type
 		var sampl fmp4.PartSample
 
@@ -127,8 +139,13 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 
 // WriteRTP writes an RTP packet to the MP4 file.
 func (w *MP4Writer) WriteRTP(pkt *rtp.Packet) error {
-	// Use the stream's WriteRTPPacket functionality
-	w.stream.WriteRTPPacket(nil, w.format, pkt, time.Now(), 0)
+	// Convert RTP timestamp to NTP time
+	// RTP timestamps are in the same units as the clock rate
+	// We need to convert this to a duration and add it to a base NTP time
+	ntp := time.Now().Add(time.Duration(pkt.Timestamp) * time.Second / time.Duration(w.format.ClockRate()))
+
+	// Use the stream's WriteRTPPacket functionality with the correct timestamp
+	w.stream.WriteRTPPacket(nil, w.format, pkt, ntp, 0)
 	return nil
 }
 
