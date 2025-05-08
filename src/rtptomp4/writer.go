@@ -33,6 +33,7 @@ type MP4Writer struct {
 	track      *track
 	log        logger.Writer
 	mdat       []byte
+	media      *description.Media
 }
 
 // Log implements logger.Writer.
@@ -110,6 +111,7 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 		track:      track,
 		log:        log,
 		mdat:       make([]byte, 0),
+		media:      media,
 	}
 
 	// Add a reader to the stream that will write to our file
@@ -144,8 +146,8 @@ func (w *MP4Writer) WriteRTP(pkt *rtp.Packet) error {
 	// We need to convert this to a duration and add it to a base NTP time
 	ntp := time.Now().Add(time.Duration(pkt.Timestamp) * time.Second / time.Duration(w.format.ClockRate()))
 
-	// Use the stream's WriteRTPPacket functionality with the correct timestamp
-	w.stream.WriteRTPPacket(nil, w.format, pkt, ntp, 0)
+	// Use the stream's WriteRTPPacket functionality with the correct timestamp and media
+	w.stream.WriteRTPPacket(w.media, w.format, pkt, ntp, 0)
 	return nil
 }
 
