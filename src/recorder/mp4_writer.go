@@ -99,10 +99,18 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 	// Calculate relative timestamp in milliseconds
 	relativeTs := int64(pkt.Timestamp - *w.firstTimestamp)
 
-	// Calculate total size of NAL units
+	// Prepare NAL units for writing
+	var nalus [][]byte
+	if !isNonSyncSample {
+		// For keyframes, ensure SPS/PPS are included
+		nalus = append(nalus, w.format.SPS, w.format.PPS)
+	}
+	nalus = append(nalus, h264Unit.AU...)
+
+	// Calculate total size including start codes
 	totalSize := uint32(0)
-	for _, nalu := range h264Unit.AU {
-		totalSize += uint32(len(nalu))
+	for _, nalu := range nalus {
+		totalSize += uint32(len(nalu)) + 4 // Add 4 bytes for start code
 	}
 
 	// Write the sample
@@ -112,19 +120,18 @@ func (w *MP4Writer) WriteRTPPacket(pkt *rtp.Packet) error {
 		isNonSyncSample,
 		totalSize,
 		func() ([]byte, error) {
-			// Let the format processor handle NAL unit remuxing
-			remuxed := h264Unit.AU
-			if !isNonSyncSample {
-				// For keyframes, ensure SPS/PPS are included
-				remuxed = make([][]byte, 0, len(h264Unit.AU)+2)
-				remuxed = append(remuxed, w.format.SPS, w.format.PPS)
-				remuxed = append(remuxed, h264Unit.AU...)
-			}
-
-			// Concatenate all NAL units
+			// Concatenate all NAL units with start codes
 			sample := make([]byte, totalSize)
 			offset := 0
-			for _, nalu := range remuxed {
+			for _, nalu := range nalus {
+				// Write start code (0x00 0x00 0x00 0x01)
+				sample[offset] = 0
+				sample[offset+1] = 0
+				sample[offset+2] = 0
+				sample[offset+3] = 1
+				offset += 4
+
+				// Write NAL unit
 				copy(sample[offset:], nalu)
 				offset += len(nalu)
 			}
