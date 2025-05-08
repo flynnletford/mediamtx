@@ -317,6 +317,8 @@ func (s *session) onRecord(_ *gortsplib.ServerHandlerOnRecordCtx) (*base.Respons
 
 	s.stream = stream
 
+	fmt.Printf("onRecord: %+v\n", s.rsession.AnnouncedDescription().Medias)
+
 	rtsp.ToStream(
 		s.rsession,
 		s.rsession.AnnouncedDescription().Medias,

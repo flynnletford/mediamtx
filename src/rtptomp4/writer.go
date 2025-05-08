@@ -13,6 +13,7 @@ import (
 
 	"github.com/flynnletford/mediamtx/src/formatprocessor"
 	"github.com/flynnletford/mediamtx/src/logger"
+	"github.com/flynnletford/mediamtx/src/stream"
 	"github.com/flynnletford/mediamtx/src/unit"
 )
 
@@ -24,11 +25,18 @@ type track struct {
 // MP4Writer writes RTP packets to an MP4 file.
 type MP4Writer struct {
 	outputPath string
+	stream     *stream.Stream
 	format     format.Format
 	processor  formatprocessor.Processor
 	file       *os.File
 	track      *track
+	log        logger.Writer
 	mdat       []byte
+}
+
+// Log implements logger.Writer.
+func (w *MP4Writer) Log(level logger.Level, format string, args ...interface{}) {
+	w.log.Log(level, format, args...)
 }
 
 // NewMP4Writer creates a new MP4Writer.
@@ -72,51 +80,63 @@ func NewMP4Writer(outputPath string, format format.Format) (*MP4Writer, error) {
 		return nil, fmt.Errorf("unsupported format type: %T", format)
 	}
 
-	return &MP4Writer{
+	// Create and initialize stream
+	stream := &stream.Stream{
+		WriteQueueSize: 1500,
+	}
+	if err := stream.Initialize(); err != nil {
+		file.Close()
+		return nil, fmt.Errorf("failed to initialize stream: %w", err)
+	}
+
+	writer := &MP4Writer{
 		outputPath: outputPath,
+		stream:     stream,
 		format:     format,
 		processor:  processor,
 		file:       file,
 		track:      track,
+		log:        log,
 		mdat:       make([]byte, 0),
-	}, nil
+	}
+
+	// Add a reader to the stream that will write to our file
+	stream.AddReader(writer, nil, format, func(u unit.Unit) error {
+		// Convert the unit into an fMP4 sample based on format type
+		var sampl fmp4.PartSample
+
+		switch u := u.(type) {
+		case *unit.H264:
+			err := sampl.FillH264(0, u.AU) // Use 0 as duration, it will be updated later
+			if err != nil {
+				return fmt.Errorf("failed to fill H264 sample: %w", err)
+			}
+		// Add other unit types as needed
+		default:
+			return fmt.Errorf("unsupported unit type: %T", u)
+		}
+
+		// Append the sample to the mdat box
+		writer.mdat = append(writer.mdat, sampl.Payload...)
+
+		return nil
+	})
+
+	return writer, nil
 }
 
 // WriteRTP writes an RTP packet to the MP4 file.
 func (w *MP4Writer) WriteRTP(pkt *rtp.Packet) error {
-	// Process the RTP packet into a unit
-	u, err := w.processor.ProcessRTPPacket(pkt, time.Now(), 0, false)
-	if err != nil {
-		return fmt.Errorf("failed to process RTP packet: %w", err)
-	}
-
-	if u == nil {
-		return nil // Skip empty units
-	}
-
-	// Convert the unit into an fMP4 sample based on format type
-	var sampl fmp4.PartSample
-
-	switch u := u.(type) {
-	case *unit.H264:
-		err = sampl.FillH264(0, u.AU) // Use 0 as duration, it will be updated later
-	// Add other unit types as needed
-	default:
-		return fmt.Errorf("unsupported unit type: %T", u)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to fill fMP4 sample: %w", err)
-	}
-
-	// Append the sample to the mdat box
-	w.mdat = append(w.mdat, sampl.Payload...)
-
+	// Use the stream's WriteRTPPacket functionality
+	w.stream.WriteRTPPacket(nil, w.format, pkt, time.Now(), 0)
 	return nil
 }
 
 // Close closes the MP4Writer and finalizes the MP4 file.
 func (w *MP4Writer) Close() error {
+	// Close the stream
+	w.stream.Close()
+
 	// Write the init segment
 	init := &fmp4.Init{
 		Tracks: []*fmp4.InitTrack{w.track.initTrack},
@@ -139,5 +159,6 @@ func (w *MP4Writer) Close() error {
 		return fmt.Errorf("failed to write mdat box: %w", err)
 	}
 
+	// Close the file
 	return w.file.Close()
 }
