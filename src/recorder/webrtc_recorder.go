@@ -292,22 +292,23 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 	}
 
 	// Create a new recorder instance
-	r.currentInstance = &recorderInstance{
-		rec: &Recorder{
-			PathFormat:        r.PathFormat,
-			Format:            r.Format,
-			PartDuration:      r.PartDuration,
-			SegmentDuration:   r.SegmentDuration,
-			PathName:          r.PathName,
-			OnSegmentCreate:   r.OnSegmentCreate,
-			OnSegmentComplete: r.OnSegmentComplete,
-			Parent:            r,
-			Stream:            strm,
-		},
+	rec := &Recorder{
+		PathFormat:        r.PathFormat,
+		Format:            r.Format,
+		PartDuration:      r.PartDuration,
+		SegmentDuration:   r.SegmentDuration,
+		PathName:          r.PathName,
+		OnSegmentCreate:   r.OnSegmentCreate,
+		OnSegmentComplete: r.OnSegmentComplete,
+		Parent:            r,
+		Stream:            strm,
 	}
 
-	// Initialize the recorder instance
-	r.currentInstance.initialize()
+	// Initialize the recorder
+	rec.Initialize()
+
+	// Set the current instance
+	r.currentInstance = rec.currentInstance
 
 	return nil
 }
