@@ -132,6 +132,34 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 	trackChan := make(chan struct{})
 	var medias []*description.Media
 
+	// Initialize the stream first
+	strm.Desc = &description.Session{
+		Medias: medias,
+	}
+	err := strm.Initialize()
+	if err != nil {
+		return err
+	}
+
+	// Create a new recorder instance
+	rec := &Recorder{
+		PathFormat:        r.PathFormat,
+		Format:            r.Format,
+		PartDuration:      r.PartDuration,
+		SegmentDuration:   r.SegmentDuration,
+		PathName:          r.PathName,
+		OnSegmentCreate:   r.OnSegmentCreate,
+		OnSegmentComplete: r.OnSegmentComplete,
+		Parent:            r,
+		Stream:            strm,
+	}
+
+	// Initialize the recorder
+	rec.Initialize()
+
+	// Set the current instance
+	r.currentInstance = rec.currentInstance
+
 	// Handle incoming tracks
 	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		var typ description.MediaType
@@ -281,34 +309,6 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 	case <-time.After(5 * time.Second):
 		return fmt.Errorf("no tracks received within timeout")
 	}
-
-	// Initialize the stream
-	strm.Desc = &description.Session{
-		Medias: medias,
-	}
-	err := strm.Initialize()
-	if err != nil {
-		return err
-	}
-
-	// Create a new recorder instance
-	rec := &Recorder{
-		PathFormat:        r.PathFormat,
-		Format:            r.Format,
-		PartDuration:      r.PartDuration,
-		SegmentDuration:   r.SegmentDuration,
-		PathName:          r.PathName,
-		OnSegmentCreate:   r.OnSegmentCreate,
-		OnSegmentComplete: r.OnSegmentComplete,
-		Parent:            r,
-		Stream:            strm,
-	}
-
-	// Initialize the recorder
-	rec.Initialize()
-
-	// Set the current instance
-	r.currentInstance = rec.currentInstance
 
 	return nil
 }
