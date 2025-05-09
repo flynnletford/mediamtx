@@ -1,34 +1,26 @@
 package recorder
 
 import (
-	"encoding/binary"
 	"os"
+	"time"
 
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
-	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4"
-	"github.com/bluenviron/mediacommon/v2/pkg/formats/pmp4"
+	"github.com/bluenviron/gortsplib/v4/pkg/description"
+	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/pion/rtp"
 
 	"github.com/flynnletford/mediamtx/src/logger"
-	"github.com/flynnletford/mediamtx/src/playback"
+	"github.com/flynnletford/mediamtx/src/stream"
 )
 
-// RTPRecorder writes RTP packets to an MP4 file.
+// RTPRecorder writes RTP packets to an MP4 file using a Stream.
 type RTPRecorder struct {
 	file *os.File
 	log  logger.Writer
+	str  *stream.Stream
 
-	// H264 specific
-	sps          []byte
-	pps          []byte
-	dtsExtractor *h264.DTSExtractor
-
-	// MP4 muxer
-	muxer *playback.MuxerMP4
-	track *playback.MuxerMP4Track
-
-	// Data buffer
-	dataBuffer []byte
+	// Media description and format
+	media *description.Media
+	forma format.Format
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
@@ -38,150 +30,51 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil, err
 	}
 
-	// Write ftyp box
-	_, err = file.Write([]byte{
-		0x00, 0x00, 0x00, 0x18, // size
-		'f', 't', 'y', 'p', // type
-		'm', 'p', '4', '2', // major brand
-		0x00, 0x00, 0x00, 0x00, // minor version
-		'm', 'p', '4', '2', // compatible brands
-		'i', 's', 'o', 'm',
-	})
+	// Create H264 format
+	forma := &format.H264{
+		PayloadTyp:        96,
+		PacketizationMode: 1,
+	}
+
+	// Create media description
+	media := &description.Media{
+		Type:    description.MediaTypeVideo,
+		Formats: []format.Format{forma},
+	}
+
+	// Create stream
+	str := &stream.Stream{
+		Desc: &description.Session{
+			Medias: []*description.Media{media},
+		},
+		GenerateRTPPackets: true,
+	}
+	err = str.Initialize()
 	if err != nil {
 		file.Close()
 		return nil, err
 	}
 
 	return &RTPRecorder{
-		file: file,
-		log:  &SimpleLogger{},
+		file:  file,
+		log:   &SimpleLogger{},
+		str:   str,
+		media: media,
+		forma: forma,
 	}, nil
 }
 
 // WriteRTPPacket writes an RTP packet to the MP4 file.
 func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
-	// Extract SPS and PPS from the packet if present
-	if len(pkt.Payload) > 0 {
-		typ := h264.NALUType(pkt.Payload[0] & 0x1F)
-		switch typ {
-		case h264.NALUTypeSPS:
-			r.sps = pkt.Payload
-			return nil
-		case h264.NALUTypePPS:
-			r.pps = pkt.Payload
-			return nil
-		}
-	}
-
-	// Initialize muxer if not done yet
-	if r.muxer == nil {
-		if r.sps == nil || r.pps == nil {
-			return nil // Wait for SPS and PPS
-		}
-
-		// Create H264 codec
-		codec := &fmp4.CodecH264{
-			SPS: r.sps,
-			PPS: r.pps,
-		}
-
-		// Create init segment
-		init := &fmp4.Init{
-			Tracks: []*fmp4.InitTrack{
-				{
-					ID:        1,
-					TimeScale: 90000, // H264 uses 90kHz clock
-					Codec:     codec,
-				},
-			},
-		}
-
-		// Create muxer
-		r.muxer = &playback.MuxerMP4{
-			W: r.file,
-		}
-		r.muxer.WriteInit(init)
-		r.muxer.SetTrack(1)
-
-		// Write moov box
-		presentation := &pmp4.Presentation{
-			Tracks: make([]*pmp4.Track, len(r.muxer.Tracks)),
-		}
-		for i, track := range r.muxer.Tracks {
-			presentation.Tracks[i] = &track.Track
-		}
-		if err := presentation.Marshal(r.file); err != nil {
-			return err
-		}
-
-		// Initialize DTS extractor
-		r.dtsExtractor = &h264.DTSExtractor{}
-		r.dtsExtractor.Initialize()
-
-		// Write mdat header
-		mdatHeader := make([]byte, 8)
-		binary.BigEndian.PutUint32(mdatHeader[0:4], 0) // Size will be updated later
-		copy(mdatHeader[4:8], []byte{'m', 'd', 'a', 't'})
-		if _, err := r.file.Write(mdatHeader); err != nil {
-			return err
-		}
-	}
-
-	// Extract NALUs from RTP packet
-	nalus := [][]byte{pkt.Payload} // For now, assume single NALU per packet
-
-	// Extract DTS
-	dts, err := r.dtsExtractor.Extract(nalus, int64(pkt.Timestamp))
-	if err != nil {
-		return err
-	}
-
-	// Write sample
-	err = r.muxer.WriteSample(
-		int64(pkt.Timestamp),
-		int32(int64(pkt.Timestamp)-dts),
-		!h264.IsRandomAccess(nalus),
-		uint32(len(pkt.Payload)),
-		func() ([]byte, error) {
-			return pkt.Payload, nil
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	// Write the actual payload to the file
-	_, err = r.file.Write(pkt.Payload)
-	return err
+	// Write the RTP packet to the stream
+	r.str.WriteRTPPacket(r.media, r.forma, pkt, time.Now(), int64(pkt.Timestamp))
+	return nil
 }
 
 // Close closes the recorder.
 func (r *RTPRecorder) Close() error {
-	if r.muxer != nil {
-		r.muxer.WriteFinalDTS(r.muxer.CurTrack.LastDTS)
-		if err := r.muxer.Flush(); err != nil {
-			return err
-		}
-
-		// Update mdat size
-		fileInfo, err := r.file.Stat()
-		if err != nil {
-			return err
-		}
-
-		mdatSize := fileInfo.Size() - 8 // Subtract mdat header size
-		mdatHeader := make([]byte, 4)
-		binary.BigEndian.PutUint32(mdatHeader, uint32(mdatSize+8)) // Add header size to total size
-
-		_, err = r.file.Seek(8, os.SEEK_SET) // Skip ftyp box
-		if err != nil {
-			return err
-		}
-
-		_, err = r.file.Write(mdatHeader)
-		if err != nil {
-			return err
-		}
+	if r.str != nil {
+		r.str.Close()
 	}
 	return r.file.Close()
 }
