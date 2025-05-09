@@ -142,6 +142,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *pionwebrtc.PeerConnection)
 		TrackGatherTimeout: conf.Duration(2 * time.Second),
 		Publish:            false,
 		Log:                &SimpleLogger{},
+		PeerConnection:     pc,
 	}
 
 	// Initialize the PeerConnection

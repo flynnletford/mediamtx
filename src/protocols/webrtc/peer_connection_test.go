@@ -82,7 +82,7 @@ func TestPeerConnectionCandidates(t *testing.T) {
 			err = pc.waitGatheringDone(context.Background())
 			require.NoError(t, err)
 
-			offer := pc.wr.LocalDescription()
+			offer := pc.PeerConnection.LocalDescription()
 
 			if ca == "udp" || ca == "udp+stun" {
 				require.Equal(t, 2, strings.Count(offer.SDP, "typ host"))
@@ -187,7 +187,7 @@ func TestPeerConnectionConnectivity(t *testing.T) {
 				err = clientPC.waitGatheringDone(context.Background())
 				require.NoError(t, err)
 
-				answer, err := serverPC.CreateFullAnswer(context.Background(), clientPC.wr.LocalDescription())
+				answer, err := serverPC.CreateFullAnswer(context.Background(), clientPC.PeerConnection.LocalDescription())
 				require.NoError(t, err)
 
 				require.Equal(t, 2, strings.Count(answer.SDP, "a=candidate:"))

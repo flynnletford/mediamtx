@@ -50,7 +50,7 @@ func (t *OutgoingTrack) setup(p *PeerConnection) error {
 		return err
 	}
 
-	sender, err := p.wr.AddTrack(t.track)
+	sender, err := p.PeerConnection.AddTrack(t.track)
 	if err != nil {
 		return err
 	}
@@ -62,12 +62,12 @@ func (t *OutgoingTrack) setup(p *PeerConnection) error {
 		Period:    1 * time.Second,
 		TimeNow:   time.Now,
 		WritePacketRTCP: func(pkt rtcp.Packet) {
-			p.wr.WriteRTCP([]rtcp.Packet{pkt}) //nolint:errcheck
+			p.PeerConnection.WriteRTCP([]rtcp.Packet{pkt}) //nolint:errcheck
 		},
 	}
 	t.rtcpSender.Initialize()
 
-	p.wr.GetSenders()
+	p.PeerConnection.GetSenders()
 
 	// incoming RTCP packets must always be read to make interceptors work
 	go func() {
