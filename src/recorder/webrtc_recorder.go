@@ -279,6 +279,9 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		reorderer := &rtpreorderer.Reorderer{}
 		reorderer.Initialize()
 
+		// Track the start time for PTS calculation
+		var startTime time.Time
+
 		for {
 			pkt, _, err := track.ReadRTP()
 			if err != nil {
@@ -304,6 +307,11 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				continue
 			}
 
+			// Initialize start time if not set
+			if startTime.IsZero() {
+				startTime = ntp
+			}
+
 			// Process all packets from reorderer
 			for _, pkt := range packets {
 				// Skip empty packets
@@ -311,8 +319,8 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 					continue
 				}
 
-				// Calculate PTS from NTP timestamp
-				pts := int64(ntp.Sub(time.Unix(0, 0)) / time.Nanosecond)
+				// Calculate PTS relative to start time
+				pts := int64(ntp.Sub(startTime) / time.Nanosecond)
 
 				// Only write packets if the stream is initialized
 				if strm.Desc != nil {
