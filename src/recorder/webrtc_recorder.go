@@ -242,6 +242,9 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		rtcpReceiver := &rtcpreceiver.RTCPReceiver{
 			ClockRate: int(track.Codec().ClockRate),
 			Period:    1 * time.Second,
+			WritePacketRTCP: func(p rtcp.Packet) {
+				// We don't need to send RTCP packets back in this case
+			},
 		}
 		if err := rtcpReceiver.Initialize(); err != nil {
 			r.Log(logger.Error, "failed to initialize RTCP receiver: %v", err)
