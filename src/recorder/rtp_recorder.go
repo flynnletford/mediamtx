@@ -99,6 +99,17 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 		r.muxer.WriteInit(init)
 		r.muxer.SetTrack(1)
 
+		// Write moov box
+		presentation := &pmp4.Presentation{
+			Tracks: make([]*pmp4.Track, len(r.muxer.Tracks)),
+		}
+		for i, track := range r.muxer.Tracks {
+			presentation.Tracks[i] = &track.Track
+		}
+		if err := presentation.Marshal(r.file); err != nil {
+			return err
+		}
+
 		// Initialize DTS extractor
 		r.dtsExtractor = &h264.DTSExtractor{}
 		r.dtsExtractor.Initialize()
@@ -130,17 +141,6 @@ func (r *RTPRecorder) Close() error {
 	if r.muxer != nil {
 		r.muxer.WriteFinalDTS(r.muxer.CurTrack.LastDTS)
 		if err := r.muxer.Flush(); err != nil {
-			return err
-		}
-
-		// Write moov box
-		presentation := &pmp4.Presentation{
-			Tracks: make([]*pmp4.Track, len(r.muxer.Tracks)),
-		}
-		for i, track := range r.muxer.Tracks {
-			presentation.Tracks[i] = &track.Track
-		}
-		if err := presentation.Marshal(r.file); err != nil {
 			return err
 		}
 	}
