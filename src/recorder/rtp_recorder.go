@@ -12,6 +12,7 @@ import (
 	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/flynnletford/mediamtx/src/logger"
 	"github.com/flynnletford/mediamtx/src/stream"
+	"github.com/flynnletford/mediamtx/src/unit"
 )
 
 // RTPRecorder writes RTP packets to an MP4 file using a Stream.
@@ -26,6 +27,11 @@ type RTPRecorder struct {
 
 	// MP4 format
 	format *formatFMP4
+}
+
+// Log implements logger.Writer.
+func (r *RTPRecorder) Log(level logger.Level, format string, args ...interface{}) {
+	r.log.Log(level, format, args...)
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
@@ -91,14 +97,26 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil, fmt.Errorf("failed to initialize MP4 format")
 	}
 
-	return &RTPRecorder{
+	// Create RTPRecorder
+	r := &RTPRecorder{
 		file:   file,
 		log:    log,
 		str:    str,
 		media:  media,
 		forma:  forma,
 		format: format,
-	}, nil
+	}
+
+	// Set up stream reader
+	str.AddReader(r, media, forma, func(u unit.Unit) error {
+
+		fmt.Printf("Add reader called\n")
+
+		// The stream reader will handle the RTP packets
+		return nil
+	})
+
+	return r, nil
 }
 
 // WriteRTPPacket writes an RTP packet to the MP4 file.
