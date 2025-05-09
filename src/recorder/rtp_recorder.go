@@ -116,6 +116,9 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil
 	})
 
+	// Start the stream reader
+	str.StartReader(r)
+
 	return r, nil
 }
 
