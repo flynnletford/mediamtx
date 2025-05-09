@@ -27,7 +27,7 @@ type RTPRecorder struct {
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
-func NewRTPRecorder(filepath string, log logger.Writer) (*RTPRecorder, error) {
+func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 	file, err := os.Create(filepath)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func NewRTPRecorder(filepath string, log logger.Writer) (*RTPRecorder, error) {
 
 	return &RTPRecorder{
 		file: file,
-		log:  log,
+		log:  &SimpleLogger{},
 	}, nil
 }
 
