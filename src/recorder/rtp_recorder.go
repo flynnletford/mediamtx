@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"encoding/binary"
 	"os"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
@@ -25,6 +26,9 @@ type RTPRecorder struct {
 	// MP4 muxer
 	muxer *playback.MuxerMP4
 	track *playback.MuxerMP4Track
+
+	// Data buffer
+	dataBuffer []byte
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
@@ -113,6 +117,14 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 		// Initialize DTS extractor
 		r.dtsExtractor = &h264.DTSExtractor{}
 		r.dtsExtractor.Initialize()
+
+		// Write mdat header
+		mdatHeader := make([]byte, 8)
+		binary.BigEndian.PutUint32(mdatHeader[0:4], 0) // Size will be updated later
+		copy(mdatHeader[4:8], []byte{'m', 'd', 'a', 't'})
+		if _, err := r.file.Write(mdatHeader); err != nil {
+			return err
+		}
 	}
 
 	// Extract NALUs from RTP packet
@@ -125,7 +137,7 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 	}
 
 	// Write sample
-	return r.muxer.WriteSample(
+	err = r.muxer.WriteSample(
 		int64(pkt.Timestamp),
 		int32(int64(pkt.Timestamp)-dts),
 		!h264.IsRandomAccess(nalus),
@@ -134,6 +146,13 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 			return pkt.Payload, nil
 		},
 	)
+	if err != nil {
+		return err
+	}
+
+	// Write the actual payload to the file
+	_, err = r.file.Write(pkt.Payload)
+	return err
 }
 
 // Close closes the recorder.
@@ -141,6 +160,26 @@ func (r *RTPRecorder) Close() error {
 	if r.muxer != nil {
 		r.muxer.WriteFinalDTS(r.muxer.CurTrack.LastDTS)
 		if err := r.muxer.Flush(); err != nil {
+			return err
+		}
+
+		// Update mdat size
+		fileInfo, err := r.file.Stat()
+		if err != nil {
+			return err
+		}
+
+		mdatSize := fileInfo.Size() - 8 // Subtract mdat header size
+		mdatHeader := make([]byte, 4)
+		binary.BigEndian.PutUint32(mdatHeader, uint32(mdatSize+8)) // Add header size to total size
+
+		_, err = r.file.Seek(8, os.SEEK_SET) // Skip ftyp box
+		if err != nil {
+			return err
+		}
+
+		_, err = r.file.Write(mdatHeader)
+		if err != nil {
 			return err
 		}
 	}
