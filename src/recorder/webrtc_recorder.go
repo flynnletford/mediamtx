@@ -298,7 +298,15 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 			// Get NTP timestamp from RTCP receiver
 			ntp, avail := rtcpReceiver.PacketNTP(pkt.Timestamp)
 			if !avail {
-				log.Printf("received RTP packet without absolute time, skipping it")
+				// At the start, we might not have RTCP timestamps yet
+				// Use a relative timestamp based on RTP timestamps
+				if firstRTPTime == 0 {
+					firstRTPTime = pkt.Timestamp
+				}
+				pts := int64(float64(pkt.Timestamp-firstRTPTime) / clockRate * float64(time.Second))
+				if strm.Desc != nil {
+					strm.WriteRTPPacket(medi, mediaFormat, pkt, time.Now(), pts)
+				}
 				continue
 			}
 
