@@ -33,6 +33,20 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil, err
 	}
 
+	// Write ftyp box
+	_, err = file.Write([]byte{
+		0x00, 0x00, 0x00, 0x18, // size
+		'f', 't', 'y', 'p', // type
+		'm', 'p', '4', '2', // major brand
+		0x00, 0x00, 0x00, 0x00, // minor version
+		'm', 'p', '4', '2', // compatible brands
+		'i', 's', 'o', 'm',
+	})
+	if err != nil {
+		file.Close()
+		return nil, err
+	}
+
 	return &RTPRecorder{
 		file: file,
 		log:  &SimpleLogger{},
