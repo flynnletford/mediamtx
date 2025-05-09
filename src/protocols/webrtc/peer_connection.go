@@ -221,17 +221,17 @@ func (co *PeerConnection) Start() error {
 		return err
 	}
 
-	api := webrtc.NewAPI(
-		webrtc.WithSettingEngine(settingsEngine),
-		webrtc.WithMediaEngine(mediaEngine),
-		webrtc.WithInterceptorRegistry(interceptorRegistry))
+	// api := webrtc.NewAPI(
+	// 	webrtc.WithSettingEngine(settingsEngine),
+	// 	webrtc.WithMediaEngine(mediaEngine),
+	// 	webrtc.WithInterceptorRegistry(interceptorRegistry))
 
-	co.PeerConnection, err = api.NewPeerConnection(webrtc.Configuration{
-		ICEServers: co.ICEServers,
-	})
-	if err != nil {
-		return err
-	}
+	// co.PeerConnection, err = api.NewPeerConnection(webrtc.Configuration{
+	// 	ICEServers: co.ICEServers,
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
 	co.newLocalCandidate = make(chan *webrtc.ICECandidateInit)
 	co.connected = make(chan struct{})
