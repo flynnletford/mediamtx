@@ -141,34 +141,6 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 	trackChan := make(chan struct{})
 	var medias []*description.Media
 
-	// Initialize the stream first
-	strm.Desc = &description.Session{
-		Medias: medias,
-	}
-	err := strm.Initialize()
-	if err != nil {
-		return err
-	}
-
-	// Create a new recorder instance
-	rec := &Recorder{
-		PathFormat:        r.PathFormat,
-		Format:            r.Format,
-		PartDuration:      r.PartDuration,
-		SegmentDuration:   r.SegmentDuration,
-		PathName:          r.PathName,
-		OnSegmentCreate:   r.OnSegmentCreate,
-		OnSegmentComplete: r.OnSegmentComplete,
-		Parent:            r,
-		Stream:            strm,
-	}
-
-	// Initialize the recorder
-	rec.Initialize()
-
-	// Set the current instance
-	r.currentInstance = rec.currentInstance
-
 	// Handle incoming tracks
 	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		var typ description.MediaType
@@ -276,6 +248,38 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		select {
 		case trackChan <- struct{}{}:
 		default:
+		}
+
+		// Wait for stream initialization before writing packets
+		if strm.Desc == nil {
+			// Initialize the stream with the current media descriptions
+			strm.Desc = &description.Session{
+				Medias: medias,
+			}
+			err := strm.Initialize()
+			if err != nil {
+				r.Log(logger.Error, "failed to initialize stream: %v", err)
+				return
+			}
+
+			// Create a new recorder instance
+			rec := &Recorder{
+				PathFormat:        r.PathFormat,
+				Format:            r.Format,
+				PartDuration:      r.PartDuration,
+				SegmentDuration:   r.SegmentDuration,
+				PathName:          r.PathName,
+				OnSegmentCreate:   r.OnSegmentCreate,
+				OnSegmentComplete: r.OnSegmentComplete,
+				Parent:            r,
+				Stream:            strm,
+			}
+
+			// Initialize the recorder
+			rec.Initialize()
+
+			// Set the current instance
+			r.currentInstance = rec.currentInstance
 		}
 
 		// Handle RTP packets
