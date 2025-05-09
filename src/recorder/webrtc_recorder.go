@@ -1,20 +1,17 @@
 package recorder
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	rtspformat "github.com/bluenviron/gortsplib/v4/pkg/format"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
-	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/flynnletford/mediamtx/src/logger"
+	webrtcprotocol "github.com/flynnletford/mediamtx/src/protocols/webrtc"
 	"github.com/flynnletford/mediamtx/src/stream"
-	"github.com/pion/rtcp"
-	"github.com/pion/webrtc/v4"
+	pionwebrtc "github.com/pion/webrtc/v4"
 )
 
 // SimpleLogger is a simple logger implementation.
@@ -128,7 +125,7 @@ func (r *WebRTCRecorder) run() {
 }
 
 // RecordFromPeerConnection starts recording from a WebRTC peer connection.
-func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) error {
+func (r *WebRTCRecorder) RecordFromPeerConnection(pc *pionwebrtc.PeerConnection) error {
 	// Create a stream
 	strm := &stream.Stream{
 		WriteQueueSize:     512,
@@ -137,208 +134,77 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		Parent:             &SimpleLogger{},
 	}
 
-	// Create a channel to wait for the first track
-	trackChan := make(chan struct{})
-	var medias []*description.Media
+	// Create our internal PeerConnection type
+	internalPC := &webrtcprotocol.PeerConnection{
+		LocalRandomUDP:     true,
+		IPsFromInterfaces:  true,
+		HandshakeTimeout:   conf.Duration(10 * time.Second),
+		TrackGatherTimeout: conf.Duration(2 * time.Second),
+		Publish:            false,
+		Log:                &SimpleLogger{},
+	}
+
+	// Initialize the PeerConnection
+	if err := internalPC.Start(); err != nil {
+		return fmt.Errorf("failed to initialize peer connection: %v", err)
+	}
+	defer internalPC.Close()
+
+	// Get the offer from the Pion WebRTC PeerConnection
+	offer := pc.LocalDescription()
+	if offer == nil {
+		return fmt.Errorf("no local description available")
+	}
+
+	// Create a full answer using the offer
+	ctx := context.Background()
+	answer, err := internalPC.CreateFullAnswer(ctx, offer)
+	if err != nil {
+		return fmt.Errorf("failed to create full answer: %v", err)
+	}
+
+	// Set the answer on the Pion WebRTC PeerConnection
+	if err := pc.SetRemoteDescription(*answer); err != nil {
+		return fmt.Errorf("failed to set remote description: %v", err)
+	}
 
 	// Handle incoming tracks
-	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		var typ description.MediaType
-		var mediaFormat rtspformat.Format
-
-		if track.ID() != "video" {
-			return
-		}
-
-		// Only process video tracks
-		switch strings.ToLower(track.Codec().MimeType) {
-		case strings.ToLower(webrtc.MimeTypeAV1):
-			typ = description.MediaTypeVideo
-			mediaFormat = &rtspformat.AV1{
-				PayloadTyp: uint8(track.PayloadType()),
-			}
-
-		case strings.ToLower(webrtc.MimeTypeVP9):
-			typ = description.MediaTypeVideo
-			mediaFormat = &rtspformat.VP9{
-				PayloadTyp: uint8(track.PayloadType()),
-			}
-
-		case strings.ToLower(webrtc.MimeTypeVP8):
-			typ = description.MediaTypeVideo
-			mediaFormat = &rtspformat.VP8{
-				PayloadTyp: uint8(track.PayloadType()),
-			}
-
-		case strings.ToLower(webrtc.MimeTypeH265):
-			typ = description.MediaTypeVideo
-			mediaFormat = &rtspformat.H265{
-				PayloadTyp: uint8(track.PayloadType()),
-			}
-
-		case strings.ToLower(webrtc.MimeTypeH264):
-			typ = description.MediaTypeVideo
-			mediaFormat = &rtspformat.H264{
-				PayloadTyp:        uint8(track.PayloadType()),
-				PacketizationMode: 1,
-			}
-
-		default:
-			// Skip non-video tracks
-			return
-		}
-
-		medi := &description.Media{
-			Type:    typ,
-			Formats: []rtspformat.Format{mediaFormat},
-		}
-
-		medias = append(medias, medi)
-
-		// Signal that we have received a track
-		select {
-		case trackChan <- struct{}{}:
-		default:
-		}
-
-		// Initialize stream if not already initialized
-		if strm.Desc == nil {
-			// Initialize the stream with the current media descriptions
-			strm.Desc = &description.Session{
-				Medias: medias,
-			}
-			if err := strm.Initialize(); err != nil {
-				log.Printf("failed to initialize stream: %v", err)
-				return
-			}
-
-			// Create a new recorder instance
-			rec := &Recorder{
-				PathFormat:        r.PathFormat,
-				Format:            r.Format,
-				PartDuration:      r.PartDuration,
-				SegmentDuration:   r.SegmentDuration,
-				PathName:          r.PathName,
-				OnSegmentCreate:   r.OnSegmentCreate,
-				OnSegmentComplete: r.OnSegmentComplete,
-				Stream:            strm,
-				Parent:            &SimpleLogger{},
-			}
-
-			// Initialize the recorder
-			rec.Initialize()
-
-			// Set the current instance
-			r.currentInstance = rec.currentInstance
-		}
-
-		// Set up RTCP receiver for accurate timestamps
-		rtcpReceiver := &rtcpreceiver.RTCPReceiver{
-			ClockRate: int(track.Codec().ClockRate),
-			Period:    1 * time.Second,
-			WritePacketRTCP: func(p rtcp.Packet) {
-				// We don't need to send RTCP packets back in this case
-			},
-		}
-		if err := rtcpReceiver.Initialize(); err != nil {
-			log.Printf("failed to initialize RTCP receiver: %v", err)
-			return
-		}
-		defer rtcpReceiver.Close()
-
-		// Read RTCP packets in a separate goroutine
-		go func() {
-			buf := make([]byte, 1500)
-			for {
-				n, _, err := receiver.Read(buf)
-				if err != nil {
-					return
-				}
-
-				pkts, err := rtcp.Unmarshal(buf[:n])
-				if err != nil {
-					log.Printf("failed to unmarshal RTCP packet: %v", err)
-					continue
-				}
-
-				for _, pkt := range pkts {
-					if sr, ok := pkt.(*rtcp.SenderReport); ok {
-						rtcpReceiver.ProcessSenderReport(sr, time.Now())
-					}
-				}
-			}
-		}()
-
-		// Handle RTP packets
-		reorderer := &rtpreorderer.Reorderer{}
-		reorderer.Initialize()
-
-		// Track the first RTP timestamp for PTS calculation
-		var firstRTPTime uint32
-		clockRate := float64(track.Codec().ClockRate)
-
-		for {
-			pkt, _, err := track.ReadRTP()
-			if err != nil {
-				return
-			}
-
-			// Process packet through reorderer
-			packets, lost := reorderer.Process(pkt)
-			if lost != 0 {
-				log.Printf("%d RTP packets lost", lost)
-			}
-
-			// Process packet through RTCP receiver
-			if err := rtcpReceiver.ProcessPacket(pkt, time.Now(), true); err != nil {
-				log.Printf("failed to process RTCP packet: %v", err)
-				continue
-			}
-
-			// Get NTP timestamp from RTCP receiver
-			ntp, avail := rtcpReceiver.PacketNTP(pkt.Timestamp)
-			if !avail {
-				// At the start, we might not have RTCP timestamps yet
-				// Use a relative timestamp based on RTP timestamps
-				if firstRTPTime == 0 {
-					firstRTPTime = pkt.Timestamp
-				}
-				pts := int64(float64(pkt.Timestamp-firstRTPTime) / clockRate * float64(time.Second))
-				if strm.Desc != nil {
-					strm.WriteRTPPacket(medi, mediaFormat, pkt, time.Now(), pts)
-				}
-				continue
-			}
-
-			// Initialize first RTP timestamp if not set
-			if firstRTPTime == 0 {
-				firstRTPTime = pkt.Timestamp
-			}
-
-			// Process all packets from reorderer
-			for _, pkt := range packets {
-				// Skip empty packets
-				if len(pkt.Payload) == 0 {
-					continue
-				}
-
-				// Calculate PTS from RTP timestamp
-				pts := int64(float64(pkt.Timestamp-firstRTPTime) / clockRate * float64(time.Second))
-
-				// Only write packets if the stream is initialized
-				if strm.Desc != nil {
-					strm.WriteRTPPacket(medi, mediaFormat, pkt, ntp, pts)
-				}
-			}
-		}
-	})
-
-	// Wait for the first track
-	select {
-	case <-trackChan:
-	case <-time.After(5 * time.Second):
-		return fmt.Errorf("no tracks received within timeout")
+	if err := internalPC.GatherIncomingTracks(ctx); err != nil {
+		return fmt.Errorf("failed to gather incoming tracks: %v", err)
 	}
+
+	// Map the WebRTC connection to a MediaMTX stream
+	medias, err := webrtcprotocol.ToStream(internalPC, &strm)
+	if err != nil {
+		return fmt.Errorf("failed to map WebRTC connection to stream: %v", err)
+	}
+
+	// Initialize the stream with the media descriptions
+	strm.Desc = &description.Session{
+		Medias: medias,
+	}
+	if err := strm.Initialize(); err != nil {
+		return fmt.Errorf("failed to initialize stream: %v", err)
+	}
+
+	// Create a new recorder instance
+	rec := &Recorder{
+		PathFormat:        r.PathFormat,
+		Format:            r.Format,
+		PartDuration:      r.PartDuration,
+		SegmentDuration:   r.SegmentDuration,
+		PathName:          r.PathName,
+		OnSegmentCreate:   r.OnSegmentCreate,
+		OnSegmentComplete: r.OnSegmentComplete,
+		Stream:            strm,
+		Parent:            &SimpleLogger{},
+	}
+
+	// Initialize the recorder
+	rec.Initialize()
+
+	// Set the current instance
+	r.currentInstance = rec.currentInstance
 
 	return nil
 }
