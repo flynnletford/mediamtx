@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -21,6 +22,9 @@ type RTPRecorder struct {
 	// Media description and format
 	media *description.Media
 	forma rtspformat.Format
+
+	// MP4 format
+	format *formatFMP4
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
@@ -56,12 +60,29 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil, err
 	}
 
+	// Create MP4 format
+	format := &formatFMP4{
+		ri: &recorderInstance{
+			pathFormat: filepath,
+			rec: &Recorder{
+				Stream: str,
+			},
+		},
+	}
+
+	// Initialize format with tracks
+	if !format.initialize() {
+		file.Close()
+		return nil, fmt.Errorf("failed to initialize MP4 format")
+	}
+
 	return &RTPRecorder{
-		file:  file,
-		log:   &SimpleLogger{},
-		str:   str,
-		media: media,
-		forma: forma,
+		file:   file,
+		log:    &SimpleLogger{},
+		str:    str,
+		media:  media,
+		forma:  forma,
+		format: format,
 	}, nil
 }
 
@@ -76,6 +97,11 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 func (r *RTPRecorder) Close() error {
 	if r.str != nil {
 		r.str.Close()
+	}
+	if r.format != nil {
+		if r.format.currentSegment != nil {
+			r.format.currentSegment.close()
+		}
 	}
 	return r.file.Close()
 }

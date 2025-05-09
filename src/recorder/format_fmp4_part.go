@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -35,6 +36,8 @@ func writePart(
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("writing part\n")
 
 	_, err = f.Write(buf.Bytes())
 	return err
