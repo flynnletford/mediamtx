@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
-	"github.com/bluenviron/gortsplib/v4/pkg/format"
+	rtspformat "github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/pion/rtp"
 
 	"github.com/flynnletford/mediamtx/src/logger"
@@ -20,7 +20,7 @@ type RTPRecorder struct {
 
 	// Media description and format
 	media *description.Media
-	forma format.Format
+	forma rtspformat.Format
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
@@ -31,7 +31,7 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 	}
 
 	// Create H264 format
-	forma := &format.H264{
+	forma := &rtspformat.H264{
 		PayloadTyp:        96,
 		PacketizationMode: 1,
 	}
@@ -39,7 +39,7 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 	// Create media description
 	media := &description.Media{
 		Type:    description.MediaTypeVideo,
-		Formats: []format.Format{forma},
+		Formats: []rtspformat.Format{forma},
 	}
 
 	// Create stream
