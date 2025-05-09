@@ -66,12 +66,16 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 
 	// Create recorder
 	rec := &Recorder{
-		Stream:          str,
-		Parent:          log,
+		PathFormat:      filepath,
 		Format:          conf.RecordFormatFMP4,
 		PartDuration:    1 * time.Second,
 		SegmentDuration: 10 * time.Second,
+		Stream:          str,
+		Parent:          log,
 	}
+
+	// Initialize recorder
+	rec.Initialize()
 
 	// Create MP4 format
 	format := &formatFMP4{
