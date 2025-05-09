@@ -7,9 +7,12 @@ import (
 
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	rtspformat "github.com/bluenviron/gortsplib/v4/pkg/format"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
+	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/flynnletford/mediamtx/src/logger"
 	"github.com/flynnletford/mediamtx/src/stream"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -235,9 +238,43 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 			r.currentInstance = rec.currentInstance
 		}
 
+		// Set up RTCP receiver for accurate timestamps
+		rtcpReceiver := &rtcpreceiver.RTCPReceiver{
+			ClockRate: int(track.Codec().ClockRate),
+			Period:    1 * time.Second,
+		}
+		if err := rtcpReceiver.Initialize(); err != nil {
+			r.Log(logger.Error, "failed to initialize RTCP receiver: %v", err)
+			return
+		}
+		defer rtcpReceiver.Close()
+
+		// Read RTCP packets in a separate goroutine
+		go func() {
+			buf := make([]byte, 1500)
+			for {
+				n, _, err := receiver.Read(buf)
+				if err != nil {
+					return
+				}
+
+				pkts, err := rtcp.Unmarshal(buf[:n])
+				if err != nil {
+					r.Log(logger.Error, "failed to unmarshal RTCP packet: %v", err)
+					continue
+				}
+
+				for _, pkt := range pkts {
+					if sr, ok := pkt.(*rtcp.SenderReport); ok {
+						rtcpReceiver.ProcessSenderReport(sr, time.Now())
+					}
+				}
+			}
+		}()
+
 		// Handle RTP packets
-		var firstRTPTime uint32
-		clockRate := float64(track.Codec().ClockRate)
+		reorderer := &rtpreorderer.Reorderer{}
+		reorderer.Initialize()
 
 		for {
 			pkt, _, err := track.ReadRTP()
@@ -245,23 +282,39 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				return
 			}
 
-			// Initialize firstRTPTime on first packet
-			if firstRTPTime == 0 {
-				firstRTPTime = pkt.Timestamp
+			// Process packet through reorderer
+			packets, lost := reorderer.Process(pkt)
+			if lost != 0 {
+				r.Log(logger.Warn, "%d RTP packets lost", lost)
 			}
 
-			// Calculate PTS relative to the first RTP timestamp
-			var pts int64
-			if pkt.Timestamp >= firstRTPTime {
-				pts = int64(float64(pkt.Timestamp-firstRTPTime) / clockRate * float64(time.Second))
-			} else {
-				// Handle RTP timestamp wrap-around
-				pts = int64(float64((0xFFFFFFFF-firstRTPTime)+pkt.Timestamp+1) / clockRate * float64(time.Second))
+			// Process packet through RTCP receiver
+			if err := rtcpReceiver.ProcessPacket(pkt, time.Now(), true); err != nil {
+				r.Log(logger.Warn, "failed to process RTCP packet: %v", err)
+				continue
 			}
 
-			// Only write packets if the stream is initialized
-			if strm.Desc != nil {
-				strm.WriteRTPPacket(medi, mediaFormat, pkt, time.Now(), pts)
+			// Get NTP timestamp from RTCP receiver
+			ntp, avail := rtcpReceiver.PacketNTP(pkt.Timestamp)
+			if !avail {
+				r.Log(logger.Warn, "received RTP packet without absolute time, skipping it")
+				continue
+			}
+
+			// Process all packets from reorderer
+			for _, pkt := range packets {
+				// Skip empty packets
+				if len(pkt.Payload) == 0 {
+					continue
+				}
+
+				// Calculate PTS from NTP timestamp
+				pts := int64(ntp.Sub(time.Unix(0, 0)) / time.Nanosecond)
+
+				// Only write packets if the stream is initialized
+				if strm.Desc != nil {
+					strm.WriteRTPPacket(medi, mediaFormat, pkt, ntp, pts)
+				}
 			}
 		}
 	})
