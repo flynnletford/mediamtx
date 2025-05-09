@@ -49,6 +49,9 @@ func NewWebRTCRecorder(filePath string) *WebRTCRecorder {
 		SegmentDuration: 10 * time.Second,
 		restartPause:    2 * time.Second,
 		Parent:          &NullLogger{},
+
+		terminate: make(chan struct{}),
+		done:      make(chan struct{}),
 	}
 }
 
@@ -146,6 +149,10 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		var typ description.MediaType
 		var mediaFormat rtspformat.Format
 
+		if track.ID() != "video" {
+			return
+		}
+
 		// Only process video tracks
 		switch strings.ToLower(track.Codec().MimeType) {
 		case strings.ToLower(webrtc.MimeTypeAV1):
@@ -229,8 +236,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		}
 
 		// Handle RTP packets
-		var lastPTS time.Duration
-		var lastRTPTime uint32
+		var firstRTPTime uint32
 		clockRate := float64(track.Codec().ClockRate)
 
 		for {
@@ -239,24 +245,19 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				return
 			}
 
-			// Calculate PTS from RTP timestamp
-			if lastRTPTime == 0 {
-				lastRTPTime = pkt.Timestamp
+			// Initialize firstRTPTime on first packet
+			if firstRTPTime == 0 {
+				firstRTPTime = pkt.Timestamp
 			}
 
-			// Handle RTP timestamp wrap-around
-			var diff uint32
-			if pkt.Timestamp >= lastRTPTime {
-				diff = pkt.Timestamp - lastRTPTime
+			// Calculate PTS relative to the first RTP timestamp
+			var pts int64
+			if pkt.Timestamp >= firstRTPTime {
+				pts = int64(float64(pkt.Timestamp-firstRTPTime) / clockRate * float64(time.Second))
 			} else {
-				diff = (0xFFFFFFFF - lastRTPTime) + pkt.Timestamp + 1
+				// Handle RTP timestamp wrap-around
+				pts = int64(float64((0xFFFFFFFF-firstRTPTime)+pkt.Timestamp+1) / clockRate * float64(time.Second))
 			}
-
-			lastRTPTime = pkt.Timestamp
-			lastPTS += time.Duration(float64(diff) / clockRate * float64(time.Second))
-
-			// Convert PTS to int64 (nanoseconds)
-			pts := int64(lastPTS / time.Nanosecond)
 
 			// Only write packets if the stream is initialized
 			if strm.Desc != nil {
