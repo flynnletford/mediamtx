@@ -150,26 +150,26 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *pionwebrtc.PeerConnection)
 	}
 	defer internalPC.Close()
 
-	// Get the offer from the Pion WebRTC PeerConnection
-	offer := pc.LocalDescription()
-	if offer == nil {
-		return fmt.Errorf("no local description available")
-	}
+	// // Get the offer from the Pion WebRTC PeerConnection
+	// offer := pc.LocalDescription()
+	// if offer == nil {
+	// 	return fmt.Errorf("no local description available")
+	// }
 
-	// Create a full answer using the offer
-	ctx := context.Background()
-	answer, err := internalPC.CreateFullAnswer(ctx, offer)
-	if err != nil {
-		return fmt.Errorf("failed to create full answer: %v", err)
-	}
+	// // Create a full answer using the offer
+	// ctx := context.Background()
+	// answer, err := internalPC.CreateFullAnswer(ctx, offer)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create full answer: %v", err)
+	// }
 
-	// Set the answer on the Pion WebRTC PeerConnection
-	if err := pc.SetRemoteDescription(*answer); err != nil {
-		return fmt.Errorf("failed to set remote description: %v", err)
-	}
+	// // Set the answer on the Pion WebRTC PeerConnection
+	// if err := pc.SetRemoteDescription(*answer); err != nil {
+	// 	return fmt.Errorf("failed to set remote description: %v", err)
+	// }
 
 	// Handle incoming tracks
-	if err := internalPC.GatherIncomingTracks(ctx); err != nil {
+	if err := internalPC.GatherIncomingTracks(context.Background()); err != nil {
 		return fmt.Errorf("failed to gather incoming tracks: %v", err)
 	}
 
