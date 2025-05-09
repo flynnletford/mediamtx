@@ -114,6 +114,9 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 func (r *RTPRecorder) Close() error {
 	if r.muxer != nil {
 		r.muxer.WriteFinalDTS(r.muxer.CurTrack.LastDTS)
+		if err := r.muxer.Flush(); err != nil {
+			return err
+		}
 	}
 	return r.file.Close()
 }
