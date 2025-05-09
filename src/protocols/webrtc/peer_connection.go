@@ -121,7 +121,7 @@ func (co *PeerConnection) Start() error {
 			stringInSlice(iface, co.IPsFromInterfacesList))
 	})
 
-	settingsEngine.SetAdditionalHosts(co.AdditionalHosts)
+	// settingsEngine.SetAdditionalHosts(co.AdditionalHosts)
 
 	// always enable all networks since we might be the client of a remote TCP listener
 	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{
@@ -138,7 +138,7 @@ func (co *PeerConnection) Start() error {
 	}
 
 	if co.LocalRandomUDP {
-		settingsEngine.SetLocalRandomUDP(true)
+		// settingsEngine.SetLocalRandomUDP(true)
 	}
 
 	settingsEngine.SetSTUNGatherTimeout(time.Duration(co.STUNGatherTimeout))
