@@ -30,7 +30,7 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil, err
 	}
 
-	// Create H264 format
+	// Create H264 format with default configuration
 	forma := &rtspformat.H264{
 		PayloadTyp:        96,
 		PacketizationMode: 1,
@@ -42,12 +42,13 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		Formats: []rtspformat.Format{forma},
 	}
 
-	// Create stream
+	// Create stream with proper configuration
 	str := &stream.Stream{
 		Desc: &description.Session{
 			Medias: []*description.Media{media},
 		},
 		GenerateRTPPackets: true,
+		UDPMaxPayloadSize:  1400, // Standard MTU size minus headers
 	}
 	err = str.Initialize()
 	if err != nil {
