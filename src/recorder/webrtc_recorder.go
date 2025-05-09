@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -119,8 +120,6 @@ func (r *WebRTCRecorder) run() {
 
 // RecordFromPeerConnection starts recording from a WebRTC peer connection.
 func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) error {
-	var medias []*description.Media
-
 	// Create a stream
 	strm := &stream.Stream{
 		WriteQueueSize:     512,
@@ -128,6 +127,10 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		GenerateRTPPackets: false,
 		Parent:             r,
 	}
+
+	// Create a channel to wait for the first track
+	trackChan := make(chan struct{})
+	var medias []*description.Media
 
 	// Handle incoming tracks
 	pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
@@ -232,6 +235,12 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 
 		medias = append(medias, medi)
 
+		// Signal that we have received a track
+		select {
+		case trackChan <- struct{}{}:
+		default:
+		}
+
 		// Handle RTP packets
 		var lastPTS time.Duration
 		var lastRTPTime uint32
@@ -265,6 +274,13 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 			strm.WriteRTPPacket(medi, mediaFormat, pkt, time.Now(), pts)
 		}
 	})
+
+	// Wait for the first track
+	select {
+	case <-trackChan:
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("no tracks received within timeout")
+	}
 
 	// Initialize the stream
 	strm.Desc = &description.Session{
