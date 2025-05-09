@@ -250,14 +250,13 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		default:
 		}
 
-		// Wait for stream initialization before writing packets
+		// Initialize stream if not already initialized
 		if strm.Desc == nil {
 			// Initialize the stream with the current media descriptions
 			strm.Desc = &description.Session{
 				Medias: medias,
 			}
-			err := strm.Initialize()
-			if err != nil {
+			if err := strm.Initialize(); err != nil {
 				r.Log(logger.Error, "failed to initialize stream: %v", err)
 				return
 			}
@@ -312,7 +311,10 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 			// Convert PTS to int64 (nanoseconds)
 			pts := int64(lastPTS / time.Nanosecond)
 
-			strm.WriteRTPPacket(medi, mediaFormat, pkt, time.Now(), pts)
+			// Only write packets if the stream is initialized
+			if strm.Desc != nil {
+				strm.WriteRTPPacket(medi, mediaFormat, pkt, time.Now(), pts)
+			}
 		}
 	})
 
