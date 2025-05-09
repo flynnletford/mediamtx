@@ -2,6 +2,7 @@ package recorder
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -10,19 +11,10 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 	"github.com/flynnletford/mediamtx/src/conf"
-	"github.com/flynnletford/mediamtx/src/logger"
 	"github.com/flynnletford/mediamtx/src/stream"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 )
-
-// NullLogger is a logger that does nothing.
-type NullLogger struct{}
-
-// Log implements logger.Writer.
-func (l *NullLogger) Log(level logger.Level, format string, args ...interface{}) {
-	// Do nothing
-}
 
 // WebRTCRecorder records from a WebRTC peer connection.
 type WebRTCRecorder struct {
@@ -33,7 +25,6 @@ type WebRTCRecorder struct {
 	PathName          string
 	OnSegmentCreate   OnSegmentCreateFunc
 	OnSegmentComplete OnSegmentCompleteFunc
-	Parent            logger.Writer
 
 	restartPause time.Duration
 
@@ -51,7 +42,6 @@ func NewWebRTCRecorder(filePath string) *WebRTCRecorder {
 		PartDuration:    24 * time.Hour,
 		SegmentDuration: 10 * time.Second,
 		restartPause:    2 * time.Second,
-		Parent:          &NullLogger{},
 
 		terminate: make(chan struct{}),
 		done:      make(chan struct{}),
@@ -79,7 +69,6 @@ func (r *WebRTCRecorder) Initialize() {
 			PathName:          r.PathName,
 			OnSegmentCreate:   r.OnSegmentCreate,
 			OnSegmentComplete: r.OnSegmentComplete,
-			Parent:            r,
 		},
 	}
 	r.currentInstance.initialize()
@@ -87,14 +76,9 @@ func (r *WebRTCRecorder) Initialize() {
 	go r.run()
 }
 
-// Log implements logger.Writer.
-func (r *WebRTCRecorder) Log(level logger.Level, format string, args ...interface{}) {
-	r.Parent.Log(level, "[recorder] "+format, args...)
-}
-
 // Close closes the recorder.
 func (r *WebRTCRecorder) Close() {
-	r.Log(logger.Info, "recording stopped")
+	log.Printf("recording stopped")
 	close(r.terminate)
 	<-r.done
 }
@@ -126,7 +110,6 @@ func (r *WebRTCRecorder) run() {
 				PathName:          r.PathName,
 				OnSegmentCreate:   r.OnSegmentCreate,
 				OnSegmentComplete: r.OnSegmentComplete,
-				Parent:            r,
 			},
 		}
 		r.currentInstance.initialize()
@@ -140,7 +123,6 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		WriteQueueSize:     512,
 		UDPMaxPayloadSize:  1472,
 		GenerateRTPPackets: false,
-		Parent:             r,
 	}
 
 	// Create a channel to wait for the first track
@@ -214,7 +196,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				Medias: medias,
 			}
 			if err := strm.Initialize(); err != nil {
-				r.Log(logger.Error, "failed to initialize stream: %v", err)
+				log.Printf("failed to initialize stream: %v", err)
 				return
 			}
 
@@ -227,7 +209,6 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				PathName:          r.PathName,
 				OnSegmentCreate:   r.OnSegmentCreate,
 				OnSegmentComplete: r.OnSegmentComplete,
-				Parent:            r,
 				Stream:            strm,
 			}
 
@@ -247,7 +228,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 			},
 		}
 		if err := rtcpReceiver.Initialize(); err != nil {
-			r.Log(logger.Error, "failed to initialize RTCP receiver: %v", err)
+			log.Printf("failed to initialize RTCP receiver: %v", err)
 			return
 		}
 		defer rtcpReceiver.Close()
@@ -263,7 +244,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 
 				pkts, err := rtcp.Unmarshal(buf[:n])
 				if err != nil {
-					r.Log(logger.Error, "failed to unmarshal RTCP packet: %v", err)
+					log.Printf("failed to unmarshal RTCP packet: %v", err)
 					continue
 				}
 
@@ -292,19 +273,19 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 			// Process packet through reorderer
 			packets, lost := reorderer.Process(pkt)
 			if lost != 0 {
-				r.Log(logger.Warn, "%d RTP packets lost", lost)
+				log.Printf("%d RTP packets lost", lost)
 			}
 
 			// Process packet through RTCP receiver
 			if err := rtcpReceiver.ProcessPacket(pkt, time.Now(), true); err != nil {
-				r.Log(logger.Warn, "failed to process RTCP packet: %v", err)
+				log.Printf("failed to process RTCP packet: %v", err)
 				continue
 			}
 
 			// Get NTP timestamp from RTCP receiver
 			ntp, avail := rtcpReceiver.PacketNTP(pkt.Timestamp)
 			if !avail {
-				r.Log(logger.Warn, "received RTP packet without absolute time, skipping it")
+				log.Printf("received RTP packet without absolute time, skipping it")
 				continue
 			}
 
