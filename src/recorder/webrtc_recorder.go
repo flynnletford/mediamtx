@@ -146,6 +146,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		var typ description.MediaType
 		var mediaFormat rtspformat.Format
 
+		// Only process video tracks
 		switch strings.ToLower(track.Codec().MimeType) {
 		case strings.ToLower(webrtc.MimeTypeAV1):
 			typ = description.MediaTypeVideo
@@ -178,62 +179,8 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				PacketizationMode: 1,
 			}
 
-		case strings.ToLower(webrtc.MimeTypeOpus):
-			typ = description.MediaTypeAudio
-			mediaFormat = &rtspformat.Opus{
-				PayloadTyp: uint8(track.PayloadType()),
-				ChannelCount: func() int {
-					if strings.Contains(track.Codec().SDPFmtpLine, "stereo=1") {
-						return 2
-					}
-					return 1
-				}(),
-			}
-
-		case strings.ToLower(webrtc.MimeTypeG722):
-			typ = description.MediaTypeAudio
-			mediaFormat = &rtspformat.G722{}
-
-		case strings.ToLower(webrtc.MimeTypePCMU):
-			channels := int(track.Codec().Channels)
-			if channels == 0 {
-				channels = 1
-			}
-
-			typ = description.MediaTypeAudio
-			mediaFormat = &rtspformat.G711{
-				PayloadTyp: func() uint8 {
-					if channels > 1 {
-						return 118
-					}
-					return 0
-				}(),
-				MULaw:        true,
-				SampleRate:   8000,
-				ChannelCount: channels,
-			}
-
-		case strings.ToLower(webrtc.MimeTypePCMA):
-			channels := int(track.Codec().Channels)
-			if channels == 0 {
-				channels = 1
-			}
-
-			typ = description.MediaTypeAudio
-			mediaFormat = &rtspformat.G711{
-				PayloadTyp: func() uint8 {
-					if channels > 1 {
-						return 119
-					}
-					return 8
-				}(),
-				MULaw:        false,
-				SampleRate:   8000,
-				ChannelCount: channels,
-			}
-
 		default:
-			r.Log(logger.Warn, "unsupported codec: %+v", track.Codec().RTPCodecCapability)
+			// Skip non-video tracks
 			return
 		}
 
