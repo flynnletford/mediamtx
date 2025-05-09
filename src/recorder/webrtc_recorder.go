@@ -13,6 +13,14 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
+// NullLogger is a logger that does nothing.
+type NullLogger struct{}
+
+// Log implements logger.Writer.
+func (l *NullLogger) Log(level logger.Level, format string, args ...interface{}) {
+	// Do nothing
+}
+
 // WebRTCRecorder records from a WebRTC peer connection.
 type WebRTCRecorder struct {
 	PathFormat        string
@@ -40,6 +48,7 @@ func NewWebRTCRecorder(filePath string) *WebRTCRecorder {
 		PartDuration:    24 * time.Hour,
 		SegmentDuration: 10 * time.Second,
 		restartPause:    2 * time.Second,
+		Parent:          &NullLogger{},
 	}
 }
 
