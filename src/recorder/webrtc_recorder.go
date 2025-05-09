@@ -11,10 +11,19 @@ import (
 	"github.com/bluenviron/gortsplib/v4/pkg/rtcpreceiver"
 	"github.com/bluenviron/gortsplib/v4/pkg/rtpreorderer"
 	"github.com/flynnletford/mediamtx/src/conf"
+	"github.com/flynnletford/mediamtx/src/logger"
 	"github.com/flynnletford/mediamtx/src/stream"
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 )
+
+// SimpleLogger is a simple logger implementation.
+type SimpleLogger struct{}
+
+// Log implements logger.Writer.
+func (l *SimpleLogger) Log(level logger.Level, format string, args ...interface{}) {
+	log.Printf("[%s] %s", level, fmt.Sprintf(format, args...))
+}
 
 // WebRTCRecorder records from a WebRTC peer connection.
 type WebRTCRecorder struct {
@@ -69,6 +78,7 @@ func (r *WebRTCRecorder) Initialize() {
 			PathName:          r.PathName,
 			OnSegmentCreate:   r.OnSegmentCreate,
 			OnSegmentComplete: r.OnSegmentComplete,
+			Parent:            &SimpleLogger{},
 		},
 	}
 	r.currentInstance.initialize()
@@ -110,6 +120,7 @@ func (r *WebRTCRecorder) run() {
 				PathName:          r.PathName,
 				OnSegmentCreate:   r.OnSegmentCreate,
 				OnSegmentComplete: r.OnSegmentComplete,
+				Parent:            &SimpleLogger{},
 			},
 		}
 		r.currentInstance.initialize()
@@ -123,6 +134,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 		WriteQueueSize:     512,
 		UDPMaxPayloadSize:  1472,
 		GenerateRTPPackets: false,
+		Parent:             &SimpleLogger{},
 	}
 
 	// Create a channel to wait for the first track
@@ -210,6 +222,7 @@ func (r *WebRTCRecorder) RecordFromPeerConnection(pc *webrtc.PeerConnection) err
 				OnSegmentCreate:   r.OnSegmentCreate,
 				OnSegmentComplete: r.OnSegmentComplete,
 				Stream:            strm,
+				Parent:            &SimpleLogger{},
 			}
 
 			// Initialize the recorder
