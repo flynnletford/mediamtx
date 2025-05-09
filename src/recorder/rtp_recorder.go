@@ -9,6 +9,7 @@ import (
 	rtspformat "github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/pion/rtp"
 
+	"github.com/flynnletford/mediamtx/src/conf"
 	"github.com/flynnletford/mediamtx/src/logger"
 	"github.com/flynnletford/mediamtx/src/stream"
 )
@@ -33,6 +34,9 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Create logger
+	log := &SimpleLogger{}
 
 	// Create H264 format with default configuration
 	forma := &rtspformat.H264{
@@ -60,13 +64,20 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 		return nil, err
 	}
 
+	// Create recorder
+	rec := &Recorder{
+		Stream:          str,
+		Parent:          log,
+		Format:          conf.RecordFormatFMP4,
+		PartDuration:    1 * time.Second,
+		SegmentDuration: 10 * time.Second,
+	}
+
 	// Create MP4 format
 	format := &formatFMP4{
 		ri: &recorderInstance{
 			pathFormat: filepath,
-			rec: &Recorder{
-				Stream: str,
-			},
+			rec:        rec,
 		},
 	}
 
@@ -78,7 +89,7 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 
 	return &RTPRecorder{
 		file:   file,
-		log:    &SimpleLogger{},
+		log:    log,
 		str:    str,
 		media:  media,
 		forma:  forma,
