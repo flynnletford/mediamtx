@@ -1,7 +1,7 @@
 package recorder
 
 import (
-	"io"
+	"os"
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/fmp4"
@@ -13,8 +13,8 @@ import (
 
 // RTPRecorder writes RTP packets to an MP4 file.
 type RTPRecorder struct {
-	writer io.Writer
-	log    logger.Writer
+	file *os.File
+	log  logger.Writer
 
 	// H264 specific
 	sps          []byte
@@ -27,11 +27,16 @@ type RTPRecorder struct {
 }
 
 // NewRTPRecorder creates a new RTPRecorder.
-func NewRTPRecorder(writer io.Writer, log logger.Writer) *RTPRecorder {
-	return &RTPRecorder{
-		writer: writer,
-		log:    log,
+func NewRTPRecorder(filepath string, log logger.Writer) (*RTPRecorder, error) {
+	file, err := os.Create(filepath)
+	if err != nil {
+		return nil, err
 	}
+
+	return &RTPRecorder{
+		file: file,
+		log:  log,
+	}, nil
 }
 
 // WriteRTPPacket writes an RTP packet to the MP4 file.
@@ -74,7 +79,7 @@ func (r *RTPRecorder) WriteRTPPacket(pkt *rtp.Packet) error {
 
 		// Create muxer
 		r.muxer = &playback.MuxerMP4{
-			W: r.writer,
+			W: r.file,
 		}
 		r.muxer.WriteInit(init)
 		r.muxer.SetTrack(1)
@@ -110,5 +115,5 @@ func (r *RTPRecorder) Close() error {
 	if r.muxer != nil {
 		r.muxer.WriteFinalDTS(r.muxer.CurTrack.LastDTS)
 	}
-	return nil
+	return r.file.Close()
 }
