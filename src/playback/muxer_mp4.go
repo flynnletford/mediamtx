@@ -7,12 +7,12 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/pmp4"
 )
 
-type muxerMP4Track struct {
+type MuxerMP4Track struct {
 	pmp4.Track
-	lastDTS int64
+	LastDTS int64
 }
 
-func findTrackMP4(tracks []*muxerMP4Track, id int) *muxerMP4Track {
+func findTrackMP4(tracks []*MuxerMP4Track, id int) *MuxerMP4Track {
 	for _, track := range tracks {
 		if track.ID == id {
 			return track
@@ -21,18 +21,18 @@ func findTrackMP4(tracks []*muxerMP4Track, id int) *muxerMP4Track {
 	return nil
 }
 
-type muxerMP4 struct {
-	w io.Writer
+type MuxerMP4 struct {
+	W io.Writer
 
-	tracks   []*muxerMP4Track
-	curTrack *muxerMP4Track
+	Tracks   []*MuxerMP4Track
+	CurTrack *MuxerMP4Track
 }
 
-func (w *muxerMP4) writeInit(init *fmp4.Init) {
-	w.tracks = make([]*muxerMP4Track, len(init.Tracks))
+func (w *MuxerMP4) WriteInit(init *fmp4.Init) {
+	w.Tracks = make([]*MuxerMP4Track, len(init.Tracks))
 
 	for i, track := range init.Tracks {
-		w.tracks[i] = &muxerMP4Track{
+		w.Tracks[i] = &MuxerMP4Track{
 			Track: pmp4.Track{
 				ID:        track.ID,
 				TimeScale: track.TimeScale,
@@ -42,11 +42,11 @@ func (w *muxerMP4) writeInit(init *fmp4.Init) {
 	}
 }
 
-func (w *muxerMP4) setTrack(trackID int) {
-	w.curTrack = findTrackMP4(w.tracks, trackID)
+func (w *MuxerMP4) SetTrack(trackID int) {
+	w.CurTrack = findTrackMP4(w.Tracks, trackID)
 }
 
-func (w *muxerMP4) writeSample(
+func (w *MuxerMP4) WriteSample(
 	dts int64,
 	ptsOffset int32,
 	isNonSyncSample bool,
@@ -54,18 +54,18 @@ func (w *muxerMP4) writeSample(
 	getPayload func() ([]byte, error),
 ) error {
 	// remove GOPs before the GOP of the first frame
-	if (dts < 0 || (dts >= 0 && w.curTrack.lastDTS < 0)) && !isNonSyncSample {
-		w.curTrack.Samples = nil
+	if (dts < 0 || (dts >= 0 && w.CurTrack.LastDTS < 0)) && !isNonSyncSample {
+		w.CurTrack.Samples = nil
 	}
 
-	if w.curTrack.Samples == nil {
-		w.curTrack.TimeOffset = int32(dts)
+	if w.CurTrack.Samples == nil {
+		w.CurTrack.TimeOffset = int32(dts)
 	} else {
-		diff := dts - w.curTrack.lastDTS
+		diff := dts - w.CurTrack.LastDTS
 		if diff < 0 {
 			diff = 0
 		}
-		w.curTrack.Samples[len(w.curTrack.Samples)-1].Duration = uint32(diff)
+		w.CurTrack.Samples[len(w.CurTrack.Samples)-1].Duration = uint32(diff)
 	}
 
 	// prevent warning "edit list: 1 Missing key frame while searching for timestamp: 0"
@@ -73,33 +73,64 @@ func (w *muxerMP4) writeSample(
 		ptsOffset = 0
 	}
 
-	w.curTrack.Samples = append(w.curTrack.Samples, &pmp4.Sample{
+	w.CurTrack.Samples = append(w.CurTrack.Samples, &pmp4.Sample{
 		PTSOffset:       ptsOffset,
 		IsNonSyncSample: isNonSyncSample,
 		PayloadSize:     payloadSize,
 		GetPayload:      getPayload,
 	})
-	w.curTrack.lastDTS = dts
+	w.CurTrack.LastDTS = dts
 
 	return nil
 }
 
-func (w *muxerMP4) writeFinalDTS(dts int64) {
-	diff := dts - w.curTrack.lastDTS
+func (w *MuxerMP4) WriteFinalDTS(dts int64) {
+	diff := dts - w.CurTrack.LastDTS
 	if diff < 0 {
 		diff = 0
 	}
-	w.curTrack.Samples[len(w.curTrack.Samples)-1].Duration = uint32(diff)
+	w.CurTrack.Samples[len(w.CurTrack.Samples)-1].Duration = uint32(diff)
 }
 
-func (w *muxerMP4) flush() error {
+func (w *MuxerMP4) Flush() error {
 	h := pmp4.Presentation{
-		Tracks: make([]*pmp4.Track, len(w.tracks)),
+		Tracks: make([]*pmp4.Track, len(w.Tracks)),
 	}
 
-	for i, track := range w.tracks {
+	for i, track := range w.Tracks {
 		h.Tracks[i] = &track.Track
 	}
 
-	return h.Marshal(w.w)
+	return h.Marshal(w.W)
+}
+
+// writeInit implements the muxer interface.
+func (w *MuxerMP4) writeInit(init *fmp4.Init) {
+	w.WriteInit(init)
+}
+
+// setTrack implements the muxer interface.
+func (w *MuxerMP4) setTrack(trackID int) {
+	w.SetTrack(trackID)
+}
+
+// writeSample implements the muxer interface.
+func (w *MuxerMP4) writeSample(
+	dts int64,
+	ptsOffset int32,
+	isNonSyncSample bool,
+	payloadSize uint32,
+	getPayload func() ([]byte, error),
+) error {
+	return w.WriteSample(dts, ptsOffset, isNonSyncSample, payloadSize, getPayload)
+}
+
+// writeFinalDTS implements the muxer interface.
+func (w *MuxerMP4) writeFinalDTS(dts int64) {
+	w.WriteFinalDTS(dts)
+}
+
+// flush implements the muxer interface.
+func (w *MuxerMP4) flush() error {
+	return w.Flush()
 }

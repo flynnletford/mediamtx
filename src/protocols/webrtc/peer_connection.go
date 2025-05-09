@@ -97,7 +97,7 @@ type PeerConnection struct {
 	UseAbsoluteTimestamp  bool
 	Log                   logger.Writer
 
-	wr                *webrtc.PeerConnection
+	PeerConnection    *webrtc.PeerConnection
 	stateChangeMutex  sync.Mutex
 	newLocalCandidate chan *webrtc.ICECandidateInit
 	connected         chan struct{}
@@ -121,7 +121,7 @@ func (co *PeerConnection) Start() error {
 			stringInSlice(iface, co.IPsFromInterfacesList))
 	})
 
-	settingsEngine.SetAdditionalHosts(co.AdditionalHosts)
+	// settingsEngine.SetAdditionalHosts(co.AdditionalHosts)
 
 	// always enable all networks since we might be the client of a remote TCP listener
 	settingsEngine.SetNetworkTypes([]webrtc.NetworkType{
@@ -138,7 +138,7 @@ func (co *PeerConnection) Start() error {
 	}
 
 	if co.LocalRandomUDP {
-		settingsEngine.SetLocalRandomUDP(true)
+		// settingsEngine.SetLocalRandomUDP(true)
 	}
 
 	settingsEngine.SetSTUNGatherTimeout(time.Duration(co.STUNGatherTimeout))
@@ -221,17 +221,17 @@ func (co *PeerConnection) Start() error {
 		return err
 	}
 
-	api := webrtc.NewAPI(
-		webrtc.WithSettingEngine(settingsEngine),
-		webrtc.WithMediaEngine(mediaEngine),
-		webrtc.WithInterceptorRegistry(interceptorRegistry))
+	// api := webrtc.NewAPI(
+	// 	webrtc.WithSettingEngine(settingsEngine),
+	// 	webrtc.WithMediaEngine(mediaEngine),
+	// 	webrtc.WithInterceptorRegistry(interceptorRegistry))
 
-	co.wr, err = api.NewPeerConnection(webrtc.Configuration{
-		ICEServers: co.ICEServers,
-	})
-	if err != nil {
-		return err
-	}
+	// co.PeerConnection, err = api.NewPeerConnection(webrtc.Configuration{
+	// 	ICEServers: co.ICEServers,
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
 	co.newLocalCandidate = make(chan *webrtc.ICECandidateInit)
 	co.connected = make(chan struct{})
@@ -246,28 +246,28 @@ func (co *PeerConnection) Start() error {
 		for _, tr := range co.OutgoingTracks {
 			err = tr.setup(co)
 			if err != nil {
-				co.wr.Close() //nolint:errcheck
+				co.PeerConnection.Close() //nolint:errcheck
 				return err
 			}
 		}
 	} else {
-		_, err = co.wr.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+		_, err = co.PeerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
 		})
 		if err != nil {
-			co.wr.Close() //nolint:errcheck
+			co.PeerConnection.Close() //nolint:errcheck
 			return err
 		}
 
-		_, err = co.wr.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		_, err = co.PeerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionRecvonly,
 		})
 		if err != nil {
-			co.wr.Close() //nolint:errcheck
+			co.PeerConnection.Close() //nolint:errcheck
 			return err
 		}
 
-		co.wr.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+		co.PeerConnection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 			select {
 			case co.incomingTrack <- trackRecvPair{track, receiver}:
 			case <-co.ctx.Done():
@@ -275,7 +275,7 @@ func (co *PeerConnection) Start() error {
 		})
 	}
 
-	co.wr.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+	co.PeerConnection.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		co.stateChangeMutex.Lock()
 		defer co.stateChangeMutex.Unlock()
 
@@ -321,7 +321,7 @@ func (co *PeerConnection) Start() error {
 		}
 	})
 
-	co.wr.OnICECandidate(func(i *webrtc.ICECandidate) {
+	co.PeerConnection.OnICECandidate(func(i *webrtc.ICECandidate) {
 		if i != nil {
 			v := i.ToJSON()
 			select {
@@ -347,19 +347,19 @@ func (co *PeerConnection) Close() {
 	}
 
 	co.ctxCancel()
-	co.wr.Close() //nolint:errcheck
+	co.PeerConnection.Close() //nolint:errcheck
 
 	<-co.done
 }
 
 // CreatePartialOffer creates a partial offer.
 func (co *PeerConnection) CreatePartialOffer() (*webrtc.SessionDescription, error) {
-	offer, err := co.wr.CreateOffer(nil)
+	offer, err := co.PeerConnection.CreateOffer(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	err = co.wr.SetLocalDescription(offer)
+	err = co.PeerConnection.SetLocalDescription(offer)
 	if err != nil {
 		return nil, err
 	}
@@ -369,12 +369,12 @@ func (co *PeerConnection) CreatePartialOffer() (*webrtc.SessionDescription, erro
 
 // SetAnswer sets the answer.
 func (co *PeerConnection) SetAnswer(answer *webrtc.SessionDescription) error {
-	return co.wr.SetRemoteDescription(*answer)
+	return co.PeerConnection.SetRemoteDescription(*answer)
 }
 
 // AddRemoteCandidate adds a remote candidate.
 func (co *PeerConnection) AddRemoteCandidate(candidate *webrtc.ICECandidateInit) error {
-	return co.wr.AddICECandidate(*candidate)
+	return co.PeerConnection.AddICECandidate(*candidate)
 }
 
 // CreateFullAnswer creates a full answer.
@@ -382,12 +382,12 @@ func (co *PeerConnection) CreateFullAnswer(
 	ctx context.Context,
 	offer *webrtc.SessionDescription,
 ) (*webrtc.SessionDescription, error) {
-	err := co.wr.SetRemoteDescription(*offer)
+	err := co.PeerConnection.SetRemoteDescription(*offer)
 	if err != nil {
 		return nil, err
 	}
 
-	answer, err := co.wr.CreateAnswer(nil)
+	answer, err := co.PeerConnection.CreateAnswer(nil)
 	if err != nil {
 		if errors.Is(err, webrtc.ErrSenderWithNoCodecs) {
 			return nil, fmt.Errorf("codecs not supported by client")
@@ -395,7 +395,7 @@ func (co *PeerConnection) CreateFullAnswer(
 		return nil, err
 	}
 
-	err = co.wr.SetLocalDescription(answer)
+	err = co.PeerConnection.SetLocalDescription(answer)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (co *PeerConnection) CreateFullAnswer(
 		return nil, err
 	}
 
-	return co.wr.LocalDescription(), nil
+	return co.PeerConnection.LocalDescription(), nil
 }
 
 func (co *PeerConnection) waitGatheringDone(ctx context.Context) error {
@@ -447,7 +447,7 @@ outer:
 // GatherIncomingTracks gathers incoming tracks.
 func (co *PeerConnection) GatherIncomingTracks(ctx context.Context) error {
 	var sdp sdp.SessionDescription
-	sdp.Unmarshal([]byte(co.wr.RemoteDescription().SDP)) //nolint:errcheck
+	sdp.Unmarshal([]byte(co.PeerConnection.RemoteDescription().SDP)) //nolint:errcheck
 
 	maxTrackCount := len(sdp.MediaDescriptions)
 
@@ -467,7 +467,7 @@ func (co *PeerConnection) GatherIncomingTracks(ctx context.Context) error {
 				useAbsoluteTimestamp: co.UseAbsoluteTimestamp,
 				track:                pair.track,
 				receiver:             pair.receiver,
-				writeRTCP:            co.wr.WriteRTCP,
+				writeRTCP:            co.PeerConnection.WriteRTCP,
 				log:                  co.Log,
 			}
 			t.initialize()
@@ -509,7 +509,7 @@ func (co *PeerConnection) GatheringDone() <-chan struct{} {
 // LocalCandidate returns the local candidate.
 func (co *PeerConnection) LocalCandidate() string {
 	var cid string
-	for _, stats := range co.wr.GetStats() {
+	for _, stats := range co.PeerConnection.GetStats() {
 		if tstats, ok := stats.(webrtc.ICECandidatePairStats); ok && tstats.Nominated {
 			cid = tstats.LocalCandidateID
 			break
@@ -517,7 +517,7 @@ func (co *PeerConnection) LocalCandidate() string {
 	}
 
 	if cid != "" {
-		for _, stats := range co.wr.GetStats() {
+		for _, stats := range co.PeerConnection.GetStats() {
 			if tstats, ok := stats.(webrtc.ICECandidateStats); ok && tstats.ID == cid {
 				return tstats.CandidateType.String() + "/" + tstats.Protocol + "/" +
 					tstats.IP + "/" + strconv.FormatInt(int64(tstats.Port), 10)
@@ -543,7 +543,7 @@ func (co *PeerConnection) StartReading() {
 // RemoteCandidate returns the remote candidate.
 func (co *PeerConnection) RemoteCandidate() string {
 	var cid string
-	for _, stats := range co.wr.GetStats() {
+	for _, stats := range co.PeerConnection.GetStats() {
 		if tstats, ok := stats.(webrtc.ICECandidatePairStats); ok && tstats.Nominated {
 			cid = tstats.RemoteCandidateID
 			break
@@ -551,7 +551,7 @@ func (co *PeerConnection) RemoteCandidate() string {
 	}
 
 	if cid != "" {
-		for _, stats := range co.wr.GetStats() {
+		for _, stats := range co.PeerConnection.GetStats() {
 			if tstats, ok := stats.(webrtc.ICECandidateStats); ok && tstats.ID == cid {
 				return tstats.CandidateType.String() + "/" + tstats.Protocol + "/" +
 					tstats.IP + "/" + strconv.FormatInt(int64(tstats.Port), 10)
@@ -564,7 +564,7 @@ func (co *PeerConnection) RemoteCandidate() string {
 
 // BytesReceived returns received bytes.
 func (co *PeerConnection) BytesReceived() uint64 {
-	for _, stats := range co.wr.GetStats() {
+	for _, stats := range co.PeerConnection.GetStats() {
 		if tstats, ok := stats.(webrtc.TransportStats); ok {
 			if tstats.ID == "iceTransport" {
 				return tstats.BytesReceived
@@ -576,7 +576,7 @@ func (co *PeerConnection) BytesReceived() uint64 {
 
 // BytesSent returns sent bytes.
 func (co *PeerConnection) BytesSent() uint64 {
-	for _, stats := range co.wr.GetStats() {
+	for _, stats := range co.PeerConnection.GetStats() {
 		if tstats, ok := stats.(webrtc.TransportStats); ok {
 			if tstats.ID == "iceTransport" {
 				return tstats.BytesSent
