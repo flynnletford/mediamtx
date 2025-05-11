@@ -22,9 +22,9 @@ func (sm *streamMedia) initialize() error {
 
 	for _, forma := range sm.media.Formats {
 		sf := &streamFormat{
-			udpMaxPayloadSize:  sm.udpMaxPayloadSize,
-			format:             forma,
-			generateRTPPackets: sm.generateRTPPackets,
+			UdpMaxPayloadSize:  sm.udpMaxPayloadSize,
+			Format:             forma,
+			GenerateRTPPackets: sm.generateRTPPackets,
 			processingErrors:   sm.processingErrors,
 			parent:             sm.parent,
 		}

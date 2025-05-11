@@ -2,6 +2,7 @@ package rtsp
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -316,6 +317,15 @@ func (s *session) onRecord(_ *gortsplib.ServerHandlerOnRecordCtx) (*base.Respons
 	}
 
 	s.stream = stream
+
+	// Pretty json marshal and print the stream.
+
+	marshalled, err := json.MarshalIndent(stream, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	// Print the stream.
+	fmt.Printf("onRecord: %s\n", string(marshalled))
 
 	fmt.Printf("onRecord: %+v\n", s.rsession.AnnouncedDescription().Medias)
 

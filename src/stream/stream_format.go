@@ -23,13 +23,13 @@ func unitSize(u unit.Unit) uint64 {
 }
 
 type streamFormat struct {
-	udpMaxPayloadSize  int
-	format             format.Format
-	generateRTPPackets bool
+	UdpMaxPayloadSize  int
+	Format             format.Format
+	GenerateRTPPackets bool
 	processingErrors   *counterdumper.CounterDumper
 	parent             logger.Writer
 
-	proc           formatprocessor.Processor
+	Proc           formatprocessor.Processor
 	pausedReaders  map[*streamReader]ReadFunc
 	runningReaders map[*streamReader]ReadFunc
 }
@@ -39,7 +39,7 @@ func (sf *streamFormat) initialize() error {
 	sf.runningReaders = make(map[*streamReader]ReadFunc)
 
 	var err error
-	sf.proc, err = formatprocessor.New(sf.udpMaxPayloadSize, sf.format, sf.generateRTPPackets, sf.parent)
+	sf.Proc, err = formatprocessor.New(sf.UdpMaxPayloadSize, sf.Format, sf.GenerateRTPPackets, sf.parent)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (sf *streamFormat) startReader(sr *streamReader) {
 }
 
 func (sf *streamFormat) writeUnit(s *Stream, medi *description.Media, u unit.Unit) {
-	err := sf.proc.ProcessUnit(u)
+	err := sf.Proc.ProcessUnit(u)
 	if err != nil {
 		sf.processingErrors.Increase()
 		return
@@ -82,7 +82,7 @@ func (sf *streamFormat) writeRTPPacket(
 ) {
 	hasNonRTSPReaders := len(sf.pausedReaders) > 0 || len(sf.runningReaders) > 0
 
-	u, err := sf.proc.ProcessRTPPacket(pkt, ntp, pts, hasNonRTSPReaders)
+	u, err := sf.Proc.ProcessRTPPacket(pkt, ntp, pts, hasNonRTSPReaders)
 	if err != nil {
 		sf.processingErrors.Increase()
 		return

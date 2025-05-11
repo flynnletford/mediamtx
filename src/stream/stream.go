@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"encoding/json"
+
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/description"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
@@ -279,6 +281,54 @@ func (s *Stream) WriteRTPPacket(
 	defer s.mutex.RUnlock()
 
 	fmt.Printf("WriteRTPPacket\n")
+
+	{
+		streamMarshalled, err := json.MarshalIndent(s, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("streamMarshalled: %s\n", streamMarshalled)
+	}
+
+	{
+		mediMarshalled, err := json.MarshalIndent(medi, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("mediMarshalled: %s\n", mediMarshalled)
+	}
+
+	{
+		pktMarshalled, err := json.MarshalIndent(pkt, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("pktMarshalled: %s\n", pktMarshalled)
+	}
+
+	{
+		ntpMarshalled, err := json.MarshalIndent(ntp, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("ntpMarshalled: %s\n", ntpMarshalled)
+	}
+
+	{
+		ptsMarshalled, err := json.MarshalIndent(pts, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("ptsMarshalled: %s\n", ptsMarshalled)
+	}
+
+	{
+		sfMarshalled, err := json.MarshalIndent(sf, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("sfMarshalled: %s\n", sfMarshalled)
+	}
 
 	sf.writeRTPPacket(s, medi, pkt, ntp, pts)
 }

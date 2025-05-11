@@ -109,9 +109,6 @@ func NewRTPRecorder(filepath string) (*RTPRecorder, error) {
 
 	// Set up stream reader
 	str.AddReader(r, media, forma, func(u unit.Unit) error {
-
-		fmt.Printf("Add reader called\n")
-
 		// The stream reader will handle the RTP packets
 		return nil
 	})
